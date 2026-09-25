@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{ paper.title }} 지난 호</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Song+Myung&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
+<style>
+:root{--paper:#edeae2;--ink:#17160f;--muted:#6a665b;--rule:#2a2922;--hair:#bdb7a8;color-scheme:light}
+@media (prefers-color-scheme: dark){:root{--paper:#141517;--ink:#e7e3d8;--muted:#8f8a7e;--rule:#cfc9bb;--hair:#3a3b3e;color-scheme:dark}}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.6 "IBM Plex Sans KR",system-ui,sans-serif;padding-inline:16px;padding-block:20px 40px}
+.wrap{max-width:640px;margin-inline:auto}
+h1{font:400 clamp(40px,11vw,64px)/1 "Song Myung","Nanum Myeongjo",serif;text-align:center;margin:0 0 10px}
+.bar{border-top:3px double var(--rule);border-bottom:1px solid var(--rule);padding-block:5px;text-align:center;font-size:13px;margin-bottom:10px}
+ul{list-style:none;margin:0;padding:0}
+li a{display:flex;justify-content:space-between;padding:12px 2px;border-bottom:1px solid var(--hair);text-decoration:none;color:inherit;font-variant-numeric:tabular-nums}
+li a span:last-child{color:var(--muted)}
+</style>
+</head>
+<body><div class="wrap">
+<h1>{{ paper.title }}</h1>
+<div class="bar">지난 호 모아보기 · 총 {{ issues|length }}호</div>
+<ul>
+{%- for a in issues %}
+<li><a href="{{ a.file }}"><span>{{ a.label_long }}</span><span>제{{ a.no }}호</span></a></li>
+{%- endfor %}
+</ul>
+</div></body></html>

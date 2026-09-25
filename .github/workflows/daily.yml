@@ -1,0 +1,64 @@
+# 매일 07:00 KST(= 22:00 UTC 전날)에 신문을 만들어 GitHub Pages 에 게시
+# 준비: 저장소 Settings → Pages → Source: "GitHub Actions"
+#       Settings → Secrets and variables → Actions 에 .env.example 의 키 이름 그대로 등록
+name: 아침증권신문 발행
+
+on:
+  schedule:
+    - cron: "0 22 * * *"      # UTC. GitHub 부하에 따라 수 분~수십 분 늦을 수 있음
+  workflow_dispatch:           # Actions 탭에서 수동 실행
+
+permissions:
+  contents: write              # 지난 호 HTML 을 저장소에 커밋
+  pages: write
+  id-token: write
+
+concurrency:
+  group: daily-paper
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: 테스트
+        run: python -m pytest -q
+      - name: 신문 만들기
+        env:
+          TZ: Asia/Seoul
+          ECOS_API_KEY: ${{ secrets.ECOS_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          KRX_API_KEY: ${{ secrets.KRX_API_KEY }}
+          KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
+          KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python main.py
+      - name: 지난 호 보관 (저장소에 커밋)
+        run: |
+          git config user.name "paper-bot"
+          git config user.email "paper-bot@users.noreply.github.com"
+          git add output/*.html
+          git commit -m "발행: $(TZ=Asia/Seoul date +%F)" || echo "변경 없음"
+          git push
+      - name: 로그 보관
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: logs/
+          retention-days: 14
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: output
+      - id: deploy
+        uses: actions/deploy-pages@v4

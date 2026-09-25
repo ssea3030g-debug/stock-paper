@@ -1,0 +1,1 @@
+{"chart": {"result": [{"meta": {"symbol": "^GSPC", "exchangeTimezoneName": "America/New_York"}, "timestamp": [1789738200, 1789997400, 1790083800, 1790170200, 1790256600], "indicators": {"quote": [{"close": [6612.4, 6630.1, 6598.7, 6644.2, 6671.9]}]}}], "error": null}}

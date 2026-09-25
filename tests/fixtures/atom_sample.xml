@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>샘플 Atom</title>
+<entry><title>[샘플] 원·달러 환율 1,390원대 등락</title><link href="https://news.example.com/b1"/>
+<updated>2026-09-24T22:30:00Z</updated><summary>원·달러 환율이 연휴 중 역외시장에서 1,390원대에서 움직였다. 달러 강세가 이어졌다.</summary></entry>
+</feed>

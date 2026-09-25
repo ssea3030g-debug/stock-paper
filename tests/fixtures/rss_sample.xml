@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<channel><title>샘플 증권 뉴스</title><link>https://news.example.com</link>
+<item><title>[샘플] 코스피, 외국인 순매수에 3,430선 회복</title><link>https://news.example.com/a1</link>
+<description><![CDATA[<p>추석 연휴를 앞둔 23일 코스피가 외국인 매수세에 힘입어 상승 마감했다. 반도체 대형주가 지수를 이끌었다.</p>]]></description>
+<pubDate>Wed, 24 Sep 2026 16:10:00 +0900</pubDate><dc:creator>김기자</dc:creator></item>
+<item><title>[샘플] 코스피 외국인 순매수에 3,430선 회복</title><link>https://news.example.com/a1-dup</link>
+<description>중복 기사입니다.</description><pubDate>Wed, 24 Sep 2026 16:20:00 +0900</pubDate></item>
+<item><title>[샘플] 뉴욕증시, 기술주 강세에 나스닥 0.6% 상승</title><link>https://news.example.com/a2</link>
+<description>뉴욕증시 3대 지수가 24일(현지시간) 혼조세로 마감했다. 나스닥은 기술주 중심으로 올랐다.</description>
+<pubDate>Thu, 25 Sep 2026 05:40:00 +0900</pubDate></item>
+<item><title>[샘플] 국제유가, 재고 감소에 소폭 상승</title><link>https://news.example.com/a3</link>
+<description>서부텍사스산원유 가격이 원유 재고 감소 소식에 소폭 올랐다. 브렌트유도 동반 상승했다.</description>
+<pubDate>2026-09-25 06:15:00</pubDate></item>
+<item><title>[샘플] 이 종목 지금이 기회, 광고</title><link>https://news.example.com/ad</link>
+<description>광고 기사</description><pubDate>Thu, 25 Sep 2026 06:00:00 +0900</pubDate></item>
+<item><title>[샘플] 지난주 오래된 기사</title><link>https://news.example.com/old</link>
+<description>오래된 기사.</description><pubDate>Mon, 15 Sep 2026 09:00:00 +0900</pubDate></item>
+</channel></rss>

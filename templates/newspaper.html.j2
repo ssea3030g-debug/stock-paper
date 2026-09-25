@@ -1,0 +1,355 @@
+{%- if standalone %}<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+{%- endif %}
+<title>{{ paper.title }}</title>
+<meta name="description" content="{{ date_ko }} 제{{ issue_no }}호 — 국내외 증시·지표·뉴스를 모은 아침 증권 신문">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Song+Myung&family=Noto+Serif+KR:wght@400;600;700;900&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+:root{
+  --paper:#edeae2; --paper-2:#e4e0d5; --ink:#17160f; --ink-2:#3b3930; --muted:#6a665b;
+  --rule:#2a2922; --hair:#bdb7a8; --up:{{ colors.up }}; --down:{{ colors.down }}; --flat:#6a665b;
+  --notice-bg:#17160f; --notice-ink:#edeae2; --stamp:#c8161d;
+  --f-mast:"Song Myung","Nanum Myeongjo","AppleMyungjo","Batang",serif;
+  --f-serif:"Noto Serif KR","Nanum Myeongjo","AppleMyungjo","Batang",serif;
+  --f-sans:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#141517; --paper-2:#1c1d20; --ink:#e7e3d8; --ink-2:#c9c4b7; --muted:#8f8a7e;
+    --rule:#cfc9bb; --hair:#3a3b3e; --up:#ff6b66; --down:#74a7ff; --flat:#8f8a7e;
+    --notice-bg:#e7e3d8; --notice-ink:#141517; --stamp:#ff6b66; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#141517; --paper-2:#1c1d20; --ink:#e7e3d8; --ink-2:#c9c4b7; --muted:#8f8a7e;
+  --rule:#cfc9bb; --hair:#3a3b3e; --up:#ff6b66; --down:#74a7ff; --flat:#8f8a7e;
+  --notice-bg:#e7e3d8; --notice-ink:#141517; --stamp:#ff6b66; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.75 var(--f-serif);
+  padding-inline:16px;padding-block:12px 40px}
+a{color:inherit;text-decoration-color:var(--hair);text-underline-offset:3px}
+a:hover{text-decoration-color:currentColor}
+a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.sheet{max-width:1180px;margin-inline:auto}
+
+/* ── 제호 ─────────────────────────── */
+.mast{display:grid;grid-template-columns:1fr;gap:10px;align-items:end;padding-block:6px 10px}
+.ear{font:500 11.5px/1.45 var(--f-sans);color:var(--ink-2);border:1px solid var(--rule);padding:7px 9px;
+  display:none;font-variant-numeric:tabular-nums}
+.ear b{display:block;font-weight:600;letter-spacing:.06em;font-size:10.5px;color:var(--muted);margin-bottom:2px}
+.ear .row{display:flex;justify-content:space-between;gap:8px}
+.title{text-align:center;margin:0}
+.title .ko{display:block;font:400 clamp(44px,13vw,96px)/1 var(--f-mast);letter-spacing:-.02em}
+.title .en{display:block;font:600 10.5px/1 var(--f-sans);letter-spacing:.42em;color:var(--muted);margin-top:8px;padding-left:.42em}
+.dateline{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 14px;
+  border-top:3px double var(--rule);border-bottom:1px solid var(--rule);
+  padding-block:6px;margin-top:6px;font:500 12.5px/1.5 var(--f-sans);font-variant-numeric:tabular-nums}
+.dateline .no{font-weight:600}
+.sample{margin-top:10px;border:2px solid var(--stamp);color:var(--stamp);font:600 13px/1.5 var(--f-sans);
+  padding:6px 10px;text-align:center;letter-spacing:.02em}
+@media (min-width:760px){
+  .mast{grid-template-columns:190px 1fr 190px}
+  .ear{display:block}
+}
+
+/* ── 지면 그리드 ───────────────────── */
+.page{display:grid;grid-template-columns:1fr;gap:0 28px;margin-top:4px}
+.sec{padding-block:16px 18px;border-bottom:1px solid var(--rule);min-width:0}
+.kicker{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 10px;
+  border-bottom:2px solid var(--rule);padding-bottom:4px}
+.kicker h2{margin:0;font:700 17px/1.3 var(--f-serif);letter-spacing:-.01em}
+.kicker .unit{font:400 11.5px/1 var(--f-sans);color:var(--muted);white-space:nowrap}
+.note{font:500 12.5px/1.5 var(--f-sans);color:var(--ink-2);background:var(--paper-2);padding:5px 8px;margin:0 0 10px;
+  border-left:3px solid var(--rule)}
+.src{margin:10px 0 0;font:400 11.5px/1.55 var(--f-sans);color:var(--muted)}
+.src a{color:var(--muted)}
+.nodata{color:var(--muted);font-style:italic;font-family:var(--f-sans);font-size:13px}
+@media (min-width:900px){
+  .page{grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-flow:row dense}
+  .sec{grid-column:span 12}
+  .s-korea_market,.s-us_market{grid-column:span 6}
+  .s-indicators,.s-watchlist{grid-column:span 6}
+  .s-news{grid-column:span 8}
+  .s-calendar,.s-key_points{grid-column:span 4}
+  .s-calendar + .s-key_points{grid-column:9 / span 4}
+}
+
+/* ── 휴장 알림 ─────────────────────── */
+.s-holiday{border-bottom:0;padding-block:12px 0}
+.notice{background:var(--notice-bg);color:var(--notice-ink);padding:10px 14px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.notice strong{font:700 15px/1.4 var(--f-serif)}
+.notice span{font:500 13px/1.5 var(--f-sans);opacity:.85}
+
+/* ── 머리기사 ──────────────────────── */
+.s-headline{padding-block:18px 22px;border-bottom:3px double var(--rule)}
+.s-headline .label{font:600 11.5px/1 var(--f-sans);letter-spacing:.14em;color:var(--stamp)}
+.s-headline h1{margin:8px 0 12px;font:900 clamp(27px,6.4vw,50px)/1.18 var(--f-serif);letter-spacing:-.035em;text-wrap:balance}
+.lede{margin:0;font-size:17px;line-height:1.85;word-break:keep-all;max-width:62em}
+.lede::first-letter{float:left;font:900 3.25em/.86 var(--f-serif);padding:.06em .12em 0 0}
+.byline{margin:10px 0 0;font:400 11.5px/1.5 var(--f-sans);color:var(--muted)}
+@media (min-width:900px){ .lede{column-count:2;column-gap:28px;column-rule:1px solid var(--hair);max-width:none;text-align:justify} }
+
+/* ── 시세표 ───────────────────────── */
+.tbl-wrap{overflow-x:auto}
+table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans);font-variant-numeric:tabular-nums}
+.quotes th{font:500 11px/1.2 var(--f-sans);color:var(--muted);text-align:right;padding:4px 6px;border-bottom:1px solid var(--rule);white-space:nowrap}
+.quotes th:first-child,.quotes td:first-child{text-align:left;padding-left:0}
+.quotes td{padding:9px 6px;border-bottom:1px solid var(--hair);text-align:right;white-space:nowrap}
+.quotes tr:last-child td{border-bottom:0}
+.quotes td.name{font:600 15px/1.3 var(--f-serif)}
+.quotes td.name small{display:block;font:400 10.5px/1.3 var(--f-sans);color:var(--muted);margin-top:2px}
+.quotes td.val{font-weight:600;font-size:16px}
+.up{color:var(--up)} .down{color:var(--down)} .flat{color:var(--flat)}
+.big{display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--hair);margin-bottom:6px}
+.big > div{padding:4px 0 10px}
+.big > div + div{border-left:1px solid var(--hair);padding-left:14px}
+.big .n{font:600 13px/1.2 var(--f-serif)}
+.big .v{font:600 clamp(26px,7vw,34px)/1.15 var(--f-sans);font-variant-numeric:tabular-nums;letter-spacing:-.02em;margin-top:4px}
+.big .c{font:500 13px/1.3 var(--f-sans);font-variant-numeric:tabular-nums}
+.flows{margin-top:10px}
+.flows caption{text-align:left;font:600 12.5px/1.4 var(--f-serif);padding-bottom:4px}
+
+/* ── 뉴스 ─────────────────────────── */
+.news{display:grid;grid-template-columns:1fr;gap:0}
+.art{padding-block:12px;border-bottom:1px solid var(--hair)}
+.art:last-child{border-bottom:0}
+.art .meta{font:500 11.5px/1.4 var(--f-sans);color:var(--muted);font-variant-numeric:tabular-nums}
+.art h3{margin:3px 0 5px;font:700 17px/1.4 var(--f-serif);letter-spacing:-.015em;text-wrap:balance;word-break:keep-all}
+.art p{margin:0;font-size:15px;line-height:1.75;color:var(--ink-2);word-break:keep-all}
+.art.lead h3{font-size:21px}
+@media (min-width:640px){
+  .news{grid-template-columns:1fr 1fr;column-gap:22px}
+  .art.lead{grid-column:1 / -1}
+}
+
+/* ── 일정 ─────────────────────────── */
+.cal{list-style:none;margin:0;padding:0;font-family:var(--f-sans)}
+.cal li{display:grid;grid-template-columns:62px 1fr;gap:2px 10px;padding:8px 0;border-bottom:1px solid var(--hair)}
+.cal li:last-child{border-bottom:0}
+.cal .when{font:600 12.5px/1.45 var(--f-sans);font-variant-numeric:tabular-nums}
+.cal .when small{display:block;color:var(--muted);font-weight:400}
+.cal .what{font:500 14px/1.45 var(--f-sans)}
+.tag{display:inline-block;font:600 10px/1 var(--f-sans);letter-spacing:.06em;border:1px solid currentColor;padding:2px 4px;margin-right:6px;vertical-align:1px;color:var(--muted)}
+.tag.hol{color:var(--stamp)}
+
+/* ── 핵심 3줄 ─────────────────────── */
+.three{margin:0;padding:0;list-style:none;counter-reset:k}
+.three li{counter-increment:k;display:grid;grid-template-columns:28px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid var(--hair);
+  font:600 15.5px/1.6 var(--f-serif);word-break:keep-all}
+.three li:last-child{border-bottom:0}
+.three li::before{content:counter(k);font:900 22px/1.1 var(--f-serif);color:var(--stamp)}
+
+/* ── 판권·면책·지난 호 ────────────── */
+.colophon{margin-top:18px;border-top:3px double var(--rule);padding-top:12px;display:grid;gap:14px;font-family:var(--f-sans)}
+.disclaimer{font:400 12.5px/1.7 var(--f-sans);color:var(--ink-2);border:1px solid var(--rule);padding:10px 12px;margin:0}
+.disclaimer strong{font-weight:600}
+.imprint{font:400 11.5px/1.6 var(--f-sans);color:var(--muted);margin:0}
+.archive h2{font:700 14px/1.3 var(--f-serif);margin:0 0 6px}
+.archive ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.archive a{display:inline-block;font:500 12.5px/1 var(--f-sans);font-variant-numeric:tabular-nums;border:1px solid var(--hair);padding:7px 9px;text-decoration:none}
+.archive a[aria-current]{border-color:var(--rule);background:var(--ink);color:var(--paper)}
+@media (prefers-reduced-motion: no-preference){ a{transition:text-decoration-color .15s} }
+</style>
+{%- if standalone %}
+</head>
+<body>
+{%- endif %}
+<div class="sheet">
+{%- macro src_line(sec, basis=None) -%}
+  {%- if sec and sec.sources %}<p class="src">출처: {% for s in sec.sources %}<a href="{{ s.url }}" target="_blank" rel="noopener">{{ s.name }}</a>{% if not loop.last %} · {% endif %}{% endfor %}{% if basis %} · 기준 {{ basis }}{% endif %}</p>{% endif -%}
+{%- endmacro -%}
+{%- macro quote_rows(items, show_basis=True) -%}
+  {%- for i in items %}
+  <tr>
+    <td class="name">{{ i.name }}{% if show_basis and i.as_of %}<small>{{ i.as_of | dshort }}</small>{% endif %}</td>
+    {%- if i.value is none %}
+    <td class="nodata" colspan="3">데이터 없음</td>
+    {%- else %}
+    <td class="val">{{ i.value | num(dig(i)) }}</td>
+    <td class="{{ i | dir }}">{% if i.unit == '%' %}{{ i.change | signed(dig(i), '%p') }}{% else %}{{ i.change | signed(2) }}{% endif %}</td>
+    <td class="{{ i | dir }}">{{ i.change_pct | pct }}</td>
+    {%- endif %}
+  </tr>
+  {%- endfor %}
+{%- endmacro %}
+
+<header class="mast">
+  <div class="ear" aria-label="발행 정보">
+    <b>발행</b>{{ date_ko }}<br>제{{ issue_no }}호 · 오전 7시 발행
+  </div>
+  <h1 class="title"><span class="ko">{{ paper.title }}</span><span class="en">{{ paper.subtitle }}</span></h1>
+  <div class="ear" aria-label="지수 요약">
+    <b>오늘의 지수</b>
+    {%- for i in ear_items %}
+    <div class="row"><span>{{ i.name }}</span><span class="{{ i | dir }}">{% if i.value is none %}—{% else %}{{ i.value | num(2) }} {{ i.change_pct | pct }}{% endif %}</span></div>
+    {%- endfor %}
+  </div>
+</header>
+<div class="dateline">
+  <span>{{ date_ko }}</span>
+  <span class="no">제{{ issue_no }}호</span>
+  <span>{% if status.today_closed %}국내 증시 휴장{% else %}국내 증시 개장{% endif %} · 국내 시세 {{ status.last_session_label }} 기준</span>
+</div>
+{%- if sample %}
+<p class="sample">견본 — 샘플 응답으로 만든 미리보기입니다. 실제 시세·기사가 아닙니다.</p>
+{%- endif %}
+
+<main class="page">
+{%- for s in sections %}
+{%- set sec = results.get(s.id) %}
+
+{%- if s.id == 'holiday' and (status.today_closed or status.skipped_holidays) %}
+<section class="sec s-holiday" aria-label="휴장 안내">
+  <div class="notice">
+    {%- if status.today_closed %}
+    <strong>오늘은 {% if status.today_reason == '주말' %}주말이라{% else %}{{ status.today_reason | ro }}{% endif %} 국내 증시가 쉽니다</strong>
+    {%- else %}
+    <strong>지난 휴장일: {% for h in status.skipped_holidays %}{{ h.date | dshort }} {{ h.name }}{% if not loop.last %}, {% endif %}{% endfor %}</strong>
+    {%- endif %}
+    <span>국내 시세는 휴장 전 최근 거래일인 {{ status.last_session_label }} 종가 기준입니다.</span>
+  </div>
+</section>
+
+{%- elif s.id == 'headline' %}
+<section class="sec s-headline" aria-label="머리기사">
+  <div class="label">머리기사</div>
+  <h1>{{ summary.headline.title }}</h1>
+  <p class="lede">{{ summary.headline.body }}</p>
+  <p class="byline">{% if summary.provider in ('session', 'api') %}Claude가 이 신문에 실린 수집 데이터만으로 작성{% else %}수집한 수치로 자동 작성 (AI 요약 없음){% endif %}</p>
+</section>
+
+{%- elif s.id == 'korea_market' %}
+<section class="sec s-korea_market" aria-label="{{ s.title }}">
+  <div class="kicker"><h2>{{ s.title }}</h2><span class="unit">단위: 포인트, %</span></div>
+  {%- if sec and sec.note %}<p class="note">{{ sec.note }}</p>{% endif %}
+  {%- if sec and sec.ok %}
+  <div class="big">
+    {%- for i in sec['items'][:2] %}
+    <div>
+      <div class="n">{{ i.name }}</div>
+      {%- if i.value is none %}<div class="v nodata">데이터 없음</div>{% else %}
+      <div class="v {{ i | dir }}">{{ i.value | num(2) }}</div>
+      <div class="c {{ i | dir }}">{{ i.change | signed(2) }} ({{ i.change_pct | pct }})</div>{% endif %}
+    </div>
+    {%- endfor %}
+  </div>
+  {%- set flows = sec.data.flows %}
+  <div class="tbl-wrap">
+  <table class="quotes flows">
+    <caption>투자자별 순매수 <span class="unit" style="font:400 11px var(--f-sans);color:var(--muted)">(억원)</span></caption>
+    <thead><tr><th>시장</th><th>외국인</th><th>기관</th><th>개인</th></tr></thead>
+    <tbody>
+    {%- if flows %}
+      {%- for k, f in flows.items() %}
+      <tr><td class="name">{{ f.name }}</td>
+        {%- for who in ('foreign','institution','individual') %}
+        <td class="{{ f[who] | dirv }}">{% if f[who] is none %}—{% else %}{{ f[who] | eok }}{% endif %}</td>
+        {%- endfor %}</tr>
+      {%- endfor %}
+    {%- else %}
+      <tr><td class="nodata" colspan="4">데이터 없음 — 한국투자증권 Open API 키를 설정하면 표시됩니다</td></tr>
+    {%- endif %}
+    </tbody>
+  </table>
+  </div>
+  {%- else %}
+  <p class="nodata">데이터 없음</p>
+  {%- endif %}
+  {{ src_line(sec, status.last_session_label ~ ' 15:30') }}
+</section>
+
+{%- elif s.id in ('us_market', 'indicators', 'watchlist') %}
+<section class="sec s-{{ s.id }}" aria-label="{{ s.title }}">
+  <div class="kicker"><h2>{{ s.title }}</h2><span class="unit">{% if s.id == 'us_market' %}단위: 포인트, % · 현지 종가{% elif s.id == 'indicators' %}전일 대비{% else %}종가 · 전일 대비{% endif %}</span></div>
+  {%- if sec and sec.note %}<p class="note">{{ sec.note }}</p>{% endif %}
+  {%- if sec and sec['items'] %}
+  <div class="tbl-wrap">
+  <table class="quotes">
+    <thead><tr><th>{% if s.id == 'watchlist' %}종목{% else %}항목{% endif %}</th><th>{% if s.id == 'indicators' %}값{% else %}종가{% endif %}</th><th>전일비</th><th>등락률</th></tr></thead>
+    <tbody>{{ quote_rows(sec['items']) }}</tbody>
+  </table>
+  </div>
+  {%- elif not (sec and sec.note) %}
+  <p class="nodata">데이터 없음</p>
+  {%- endif %}
+  {{ src_line(sec) }}
+</section>
+
+{%- elif s.id == 'news' %}
+<section class="sec s-news" aria-label="{{ s.title }}">
+  <div class="kicker"><h2>{{ s.title }}</h2><span class="unit">최근 24시간</span></div>
+  {%- if sec and sec['items'] %}
+  <div class="news">
+    {%- for a in news_items %}
+    <article class="art{% if loop.first %} lead{% endif %}">
+      <div class="meta">{{ a.source }} · {{ a.published | dtime }}</div>
+      <h3><a href="{{ a.url }}" target="_blank" rel="noopener">{{ a.title }}</a></h3>
+      {%- set body = summary.news.get(a.id) or a.first_sentence %}
+      {%- if body %}<p>{{ body }}</p>{% endif %}
+    </article>
+    {%- endfor %}
+  </div>
+  {%- else %}
+  <p class="nodata">데이터 없음</p>
+  {%- endif %}
+  {{ src_line(sec) }}
+</section>
+
+{%- elif s.id == 'calendar' %}
+<section class="sec s-calendar" aria-label="{{ s.title }}">
+  <div class="kicker"><h2>{{ s.title }}</h2><span class="unit">KST · 미국은 현지 발표일</span></div>
+  {%- if sec and sec['items'] %}
+  <ul class="cal">
+    {%- for e in sec['items'][:s.max_items or 10] %}
+    <li><div class="when">{{ e.date_label }}{% if e.time %}<small>{{ e.time }}</small>{% endif %}</div>
+      <div class="what"><span class="tag{% if e.kind == 'holiday' %} hol{% endif %}">{{ e.region }}</span>{{ e.title }}</div></li>
+    {%- endfor %}
+  </ul>
+  {%- elif sec and sec.ok %}
+  <p class="nodata">{{ sec.note or '예정된 주요 일정이 없습니다.' }}</p>
+  {%- else %}
+  <p class="nodata">데이터 없음</p>
+  {%- endif %}
+  {{ src_line(sec) }}
+</section>
+
+{%- elif s.id == 'key_points' %}
+<section class="sec s-key_points" aria-label="{{ s.title }}">
+  <div class="kicker"><h2>{{ s.title }}</h2></div>
+  <ol class="three">
+    {%- for k in summary.key_points %}<li><span>{{ k }}</span></li>{% endfor %}
+  </ol>
+</section>
+{%- endif %}
+{%- endfor %}
+</main>
+
+<footer class="colophon">
+  {%- if show_disclaimer %}
+  <p class="disclaimer"><strong>투자 판단은 본인 책임입니다.</strong> {{ paper.disclaimer }}</p>
+  {%- endif %}
+  {%- if archive %}
+  <nav class="archive" aria-label="지난 호">
+    <h2>지난 호</h2>
+    <ul>
+      {%- for a in archive %}
+      <li><a href="{{ a.file }}"{% if a.current %} aria-current="page"{% endif %}>{{ a.label }}</a></li>
+      {%- endfor %}
+    </ul>
+  </nav>
+  {%- endif %}
+  <p class="imprint">{{ paper.title }} · 제{{ issue_no }}호 · {{ date_ko }} · 매일 오전 7시(KST) 자동 발행 · 수집 {{ collected_at }} · 모든 수치에 기준 시점과 출처를 함께 표기합니다.</p>
+</footer>
+</div>
+{%- if standalone %}
+</body>
+</html>
+{%- endif %}

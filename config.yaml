@@ -1,0 +1,153 @@
+# ─────────────────────────────────────────────────────────────
+#  증권 신문 설정 파일 (초안)
+#  코드를 고치지 않고 이 파일만 바꿔서 신문 내용을 조정합니다.
+# ─────────────────────────────────────────────────────────────
+
+newspaper:
+  title: "아침증권신문"            # 제호
+  subtitle: "THE MORNING MARKET HERALD"
+  first_issue_date: 2026-09-25    # 창간일 → 호수 = 창간일부터 발행 횟수
+  timezone: Asia/Seoul
+  language: ko
+  disclaimer: >-
+    본 신문은 공개된 데이터를 자동으로 수집·정리한 참고 자료이며, 특정 종목의 매수·매도를
+    권유하지 않습니다. 투자 판단과 그 결과에 대한 책임은 투자자 본인에게 있습니다.
+
+# 섹션 순서 = 신문에 나오는 순서. enabled: false 로 숨김
+sections:
+  - { id: masthead,     enabled: true }   # 제호 (항상 맨 위 권장)
+  - { id: holiday,      enabled: true }   # 휴장 안내 (휴장일에만 보임)
+  - { id: headline,     enabled: true }   # 머리기사
+  - { id: korea_market, enabled: true, title: "국내 증시" }
+  - { id: us_market,    enabled: true, title: "미국 증시" }
+  - { id: indicators,   enabled: true, title: "주요 지표" }
+  - { id: watchlist,    enabled: true, title: "관심 종목" }
+  - { id: news,         enabled: true, title: "주요 뉴스", max_items: 8 }
+  - { id: calendar,     enabled: true, title: "오늘의 일정", max_items: 10 }
+  - { id: key_points,   enabled: true, title: "핵심 3줄" }
+  - { id: disclaimer,   enabled: true }
+
+# ── 수집기 ───────────────────────────────────────────────────
+http:
+  timeout_sec: 15
+  retries: 3                 # 지수 백오프 재시도
+  min_interval_sec: 1.0      # 같은 호스트 요청 간 최소 간격
+  respect_robots_txt: true   # robots.txt 가 막으면 요청하지 않음
+  user_agent: "MorningMarketHerald/1.0 (+personal, non-commercial)"
+
+collectors:
+  korea_market:
+    enabled: true
+    # 앞에서부터 차례로 시도, 성공한 첫 출처 사용
+    sources: [krx_openapi, yfinance]   # 지수: 앞에서부터 시도
+    indices: [KOSPI, KOSDAQ]
+    investor_flows: true     # 외국인·기관·개인 순매수 (한국투자증권 Open API 키 필요)
+    kis:                     # KIS "시장별 투자자매매동향(일별)" — 파라미터는 KIS 문서 기준으로 조정 가능
+      path: /uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market
+      tr_id: FHPTJ04040000
+      params:
+        KOSPI:  { FID_COND_MRKT_DIV_CODE: U, FID_INPUT_ISCD: "0001", FID_INPUT_DATE_1: "{date}", FID_INPUT_ISCD_1: KSP, FID_INPUT_DATE_2: "{date}", FID_INPUT_ISCD_2: "0001" }
+        KOSDAQ: { FID_COND_MRKT_DIV_CODE: U, FID_INPUT_ISCD: "1001", FID_INPUT_DATE_1: "{date}", FID_INPUT_ISCD_1: KSQ, FID_INPUT_DATE_2: "{date}", FID_INPUT_ISCD_2: "1001" }
+
+  us_market:
+    enabled: true
+    sources: [yfinance]
+    indices:
+      - { name: "다우존스",  symbol: "^DJI" }
+      - { name: "S&P 500",  symbol: "^GSPC" }
+      - { name: "나스닥",    symbol: "^IXIC" }
+
+  indicators:
+    enabled: true
+    items:   # 각 지표별 우선 출처 → 대체 출처
+      - { id: usdkrw,  name: "원/달러 환율",   unit: "원",  sources: [ecos, yfinance], ecos: "731Y001/D/0000001", yf: "KRW=X" }
+      - { id: wti,     name: "WTI 유가",       unit: "달러", sources: [fred, yfinance], fred: "DCOILWTICO",   yf: "CL=F" }
+      - { id: brent,   name: "브렌트유",       unit: "달러", sources: [fred, yfinance], fred: "DCOILBRENTEU", yf: "BZ=F" }
+      - { id: ust10y,  name: "미 국채 10년",   unit: "%",   sources: [fred, yfinance], fred: "DGS10",        yf: "^TNX" }
+      - { id: ktb3y,   name: "국고채 3년",     unit: "%",   sources: [ecos],           ecos: "817Y002/D/010200000" }
+      - { id: gold,    name: "금",             unit: "달러/온스", sources: [yfinance],      yf: "GC=F" }
+
+  watchlist:
+    enabled: true
+    stocks: []               # 예) - { name: "삼성전자", code: "005930", market: KOSPI }
+                             #     - { name: "에코프로", code: "086520", market: KOSDAQ }
+                             #     - { name: "애플",     code: "AAPL",   market: US }
+
+  news:
+    enabled: true
+    lookback_hours: 24
+    feeds:
+      - { name: "연합뉴스 경제",   url: "https://www.yna.co.kr/rss/economy.xml" }
+      - { name: "한국경제 증권",   url: "https://www.hankyung.com/feed/finance" }
+      - { name: "매일경제 증권",   url: "https://www.mk.co.kr/rss/50200011/" }
+    keywords:
+      include: []            # 비우면 전체. 하나라도 포함하면 통과
+      exclude: ["광고", "협찬"]
+    dedupe: true             # 제목 유사도로 중복 기사 제거
+    max_collect: 30          # 요약 단계로 넘길 최대 기사 수 (지면에는 sections.news.max_items 만큼)
+
+  calendar:
+    enabled: true
+    lookahead_days: 1        # 오늘 ~ N일 뒤까지
+    sources:
+      krx_holidays: true     # 다가오는 국내 휴장일 자동 표시
+      fred_releases:         # 미국 경제지표 발표 (FRED API 키 필요). 아래 목록에 있는 발표만 표시
+        enabled: true
+        watch:
+          "Consumer Price Index": "미국 소비자물가지수(CPI)"
+          "Producer Price Index": "미국 생산자물가지수(PPI)"
+          "Employment Situation": "미국 고용보고서(비농업 고용)"
+          "Gross Domestic Product": "미국 GDP"
+          "Personal Income and Outlays": "미국 개인소득·지출(PCE 물가)"
+          "Advance Monthly Sales for Retail and Food Services": "미국 소매판매"
+          "FOMC Press Release": "FOMC 금리 결정"
+          "Unemployment Insurance Weekly Claims Report": "미국 주간 신규 실업수당 청구"
+          "ISM Manufacturing Report On Business": "미국 ISM 제조업지수"
+    recurring:               # 매달/매주 반복 일정 (monthday: 1~31 또는 weekday: 월~일)
+      - { monthday: 1, time: "09:00", title: "월간 수출입동향 발표 (산업통상자원부)", region: KR }
+    manual_events: []        # 예) - { date: 2026-10-02, time: "08:00", title: "9월 소비자물가 발표 (통계청)" }
+                             #     - { date: 2026-10-28, title: "FOMC 회의 (~29일)", region: US }
+
+# ── 휴장일 ───────────────────────────────────────────────────
+market_calendar:            # 기본 휴장일 표: data/krx_holidays.yaml (매년 갱신)
+  extra_holidays: []         # 임시공휴일 등 추가. 예) - { date: 2026-10-10, name: "임시공휴일" }
+
+# ── 요약 ────────────────────────────────────────────────────
+#  provider:
+#    session    = 예약 실행 세션의 Claude 가 요약 (API 키 불필요, 추천)
+#    api        = ANTHROPIC_API_KEY 로 Claude API 호출
+#    extractive = 기사 제목 + 첫 문장만 사용
+#    auto       = 요약 파일이 있으면 session, 키가 있으면 api, 둘 다 없으면 extractive
+summary:
+  provider: auto
+  model: claude-opus-5      # provider: api 일 때만 사용
+  max_tokens: 3000
+  news_items: 6              # 요약할 기사 수
+  news_summary_lines: 3      # 기사별 요약 줄 수 (2~3)
+  key_points: 3
+  banned_phrases:            # 투자 권유 표현 — 요약에 있으면 해당 부분은 버리고 대체 문구 사용
+    - 매수 추천
+    - 매도 추천
+    - 매수하세요
+    - 매도하세요
+    - 사야 한다
+    - 팔아야 한다
+    - 사세요
+    - 파세요
+    - 강력 매수
+    - 목표주가
+    - 지금이 기회
+    - 수익 보장
+
+# ── 출력 ─────────────────────────────────────────────────────
+output:
+  dir: output
+  archive_index: true        # output/index.html 에 지난 신문 목록
+  archive_links: 14          # 신문 하단 "지난 호"에 보여 줄 개수
+  colors:                    # 한국식: 상승 빨강, 하락 파랑
+    up: "#c8102e"
+    down: "#1f4e9c"
+
+logging:
+  dir: logs
+  level: INFO

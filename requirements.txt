@@ -1,0 +1,9 @@
+# 필수 (표준 라이브러리 외 3개)
+requests>=2.31
+Jinja2>=3.1
+PyYAML>=6.0
+
+# 선택
+anthropic>=0.60     # summary.provider: api 일 때만 필요
+holidays>=0.50      # data/krx_holidays.yaml 에 없는 연도의 공휴일 보완
+pytest>=8.0         # 테스트 실행 (python -m unittest 로도 가능)
