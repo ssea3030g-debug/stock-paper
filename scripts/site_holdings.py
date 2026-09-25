@@ -3,12 +3,15 @@
   python scripts/site_holdings.py --out output/data/holdings.json
 
 config.yaml 의 site.pages_url 이 설정돼 있으면 <pages_url>/api/holdings 를 호출해서 받고,
-아직 비어 있으면(Cloudflare 미연결) data/site_holdings.json 을 그대로 쓴다.
+아직 비어 있거나 조회에 실패하면 data/site_holdings.json 을 쓴다.
+사이트를 Cloudflare Access 로 잠갔으면 환경 변수 CF_ACCESS_CLIENT_ID·CF_ACCESS_CLIENT_SECRET
+(Access 서비스 토큰)을 헤더로 보낸다.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from urllib.error import URLError
@@ -22,7 +25,12 @@ ROOT = Path(__file__).resolve().parent.parent
 def fetch(cfg: dict) -> tuple[list, str]:
     url = ((cfg.get("site") or {}).get("pages_url") or "").strip().rstrip("/")
     if url:
-        req = Request(url + "/api/holdings", headers={"User-Agent": "stock-paper-copy/1.0"})
+        headers = {"User-Agent": "stock-paper-copy/1.0", "Accept": "application/json"}
+        # Cloudflare Access 로 잠근 뒤에는 서비스 토큰으로 통과 (환경 변수에만 둠, 저장소에 넣지 말 것)
+        if os.environ.get("CF_ACCESS_CLIENT_ID") and os.environ.get("CF_ACCESS_CLIENT_SECRET"):
+            headers["CF-Access-Client-Id"] = os.environ["CF_ACCESS_CLIENT_ID"]
+            headers["CF-Access-Client-Secret"] = os.environ["CF_ACCESS_CLIENT_SECRET"]
+        req = Request(url + "/api/holdings", headers=headers)
         try:
             with urlopen(req, timeout=15) as r:
                 data = json.loads(r.read().decode("utf-8"))
