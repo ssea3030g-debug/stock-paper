@@ -7,7 +7,11 @@ site/ 에 이미 있는 지난 호는 그대로 두고, --src 의 YYYY-MM-DD.htm
   YYYY-MM-DD.html     각 호
   archive.html        지난 호 목록
   manifest.webmanifest, sw.js, icon-*.png, _headers
-를 쓴다. 각 호 HTML 의 <head> 에 매니페스트·아이콘·서비스 워커 연결을 넣는다.
+  functions/api/      내 종목 저장(holdings)·시세 새로고침(quote) — site.storage 가 true 일 때만
+를 쓴다. 각 호 HTML 의 <head> 에 매니페스트·아이콘·서비스 워커 연결을 넣고,
+site.storage 가 true 면 앱 데이터에 site_storage 플래그를 넣어 앱이 claude.ai db 대신
+/api/holdings·/api/quote 를 쓰게 한다 (Cloudflare Pages 에 HOLDINGS 라는 KV 네임스페이스를
+바인딩해야 동작함 — 이 파일만으로는 안 됨).
 """
 from __future__ import annotations
 
@@ -28,6 +32,8 @@ from paper import fmt, render  # noqa: E402
 
 DATE_FILE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.html$")
 MARK = "<!-- pwa -->"
+STOCK_DATA_RE = re.compile(r'(<script type="application/json" id="stock-data">)(.*?)(</script>)', re.S)
+CF_FUNCTIONS_SRC = ROOT / "scripts" / "cf_functions"
 
 SW = """// 아침증권신문 서비스 워커: 페이지는 네트워크 우선(오프라인이면 마지막으로 본 것), 아이콘은 캐시 우선
 var CACHE = "paper-v1";
@@ -67,6 +73,8 @@ HEADERS = """/*
   Cache-Control: no-cache
 /manifest.webmanifest
   Content-Type: application/manifest+json
+/api/*
+  Cache-Control: no-store
 """
 
 
@@ -82,6 +90,21 @@ def add_pwa(html: str, site: dict) -> str:
         return html
     i = html.find("</head>")
     return html[:i] + head_tags(site) + html[i:] if i >= 0 else html
+
+
+def add_site_storage(html: str) -> str:
+    """앱 데이터 JSON 에 site_storage:true 를 넣어 app.js 가 /api/* 를 쓰게 한다. 없는 페이지는 그대로 둔다."""
+    m = STOCK_DATA_RE.search(html)
+    if not m:
+        return html
+    try:
+        data = json.loads(m.group(2))
+    except json.JSONDecodeError:
+        return html
+    if data.get("site_storage"):
+        return html
+    data["site_storage"] = True
+    return html[:m.start()] + m.group(1) + json.dumps(data, ensure_ascii=False) + m.group(3) + html[m.end():]
 
 
 def manifest(site: dict) -> dict:
@@ -104,9 +127,13 @@ def build(cfg: dict, src: Path, site_dir: Path) -> list[str]:
                    reverse=True)
     if not dates:
         raise SystemExit(f"{src} 와 {site_dir} 에 YYYY-MM-DD.html 이 없습니다")
+    storage = bool(site.get("storage", True))
     for d in dates:
         p = site_dir / f"{d}.html"
-        p.write_text(add_pwa(p.read_text(encoding="utf-8"), site), encoding="utf-8")
+        html = p.read_text(encoding="utf-8")
+        if storage:
+            html = add_site_storage(html)
+        p.write_text(add_pwa(html, site), encoding="utf-8")
     shutil.copyfile(site_dir / f"{dates[0]}.html", site_dir / "index.html")
 
     issues = [{"file": f"{d}.html", "label_long": fmt.date_ko(dt.date.fromisoformat(d)),
@@ -120,6 +147,12 @@ def build(cfg: dict, src: Path, site_dir: Path) -> list[str]:
     (site_dir / "_headers").write_text(HEADERS, encoding="utf-8")
     for n in (180, 192, 512):
         shutil.copyfile(ROOT / "static" / f"icon-{n}.png", site_dir / f"icon-{n}.png")
+
+    fn_dst = site_dir / "functions"
+    if storage:
+        shutil.copytree(CF_FUNCTIONS_SRC, fn_dst, dirs_exist_ok=True)
+    elif fn_dst.exists():
+        shutil.rmtree(fn_dst)
     return dates
 
 

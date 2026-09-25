@@ -4,6 +4,7 @@
   var DATA = JSON.parse(document.getElementById("stock-data").textContent);
   var app = document.getElementById("app");
   var db = null;
+  var liveStocks = {};
   var holdings = (DATA.snapshot || []).map(function (h) { return Object.assign({}, h, { id: keyOf(h) }); });
   var view = { name: "list" };
   var flash = null;
@@ -11,6 +12,7 @@
 
   function keyOf(h) { return String(h.market || "KR").toUpperCase() + "-" + String(h.code || "").toUpperCase(); }
   function stockOf(h) {
+    if (liveStocks[h.id]) return liveStocks[h.id];
     if (DATA.stocks[h.id]) return DATA.stocks[h.id];
     for (var k in DATA.stocks) if (DATA.stocks[k].db_id === h.id) return DATA.stocks[k];
     return null;
@@ -406,24 +408,98 @@
     });
   }
 
+  /* ── Cloudflare 배포용 저장소·시세 (window.claude 가 없을 때) ──
+     내 종목 저장은 /api/holdings(KV), 시세는 /api/quote(Yahoo 프록시)로 대신한다.
+     실시간 동기화는 없어서 짧은 간격으로 다시 물어보는 방식으로 흉내 낸다. */
+  function siteDb() {
+    function call(method, body) {
+      return fetch("/api/holdings", { method: method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+        .then(function (r) {
+          if (r.ok) return r.json();
+          return r.json().catch(function () { return {}; }).then(function (e) {
+            var err = new Error("api"); err.code = e.code || ("http_" + r.status); throw err;
+          });
+        });
+    }
+    function list() { return fetch("/api/holdings").then(function (r) { if (!r.ok) throw new Error("http_" + r.status); return r.json(); }); }
+    return {
+      doc: function (path) {
+        var id = path.split("/")[1];
+        return {
+          get: function () {
+            return list().then(function (arr) {
+              var d = arr.filter(function (x) { return x.id === id; })[0];
+              return { exists: !!d, data: function () { return d; } };
+            });
+          },
+          set: function (data) { return call("PUT", { id: id, data: data }); },
+          update: function (patch) { return call("PATCH", { id: id, data: patch }); },
+          delete: function () { return call("DELETE", { id: id }); },
+        };
+      },
+      collection: function () {
+        return {
+          onSnapshot: function (cb, errCb) {
+            function poll() {
+              list().then(function (arr) {
+                cb({ docs: arr.map(function (x) { return { id: x.id, data: function () { return x; } }; }) });
+              }).catch(function (e) { if (errCb) errCb({ code: "network" }); });
+            }
+            poll();
+            setInterval(poll, 25000);
+          },
+        };
+      },
+    };
+  }
+  function refreshQuotes() {
+    holdings.forEach(function (h) {
+      if (!h.market || !h.code) return;
+      fetch("/api/quote?market=" + encodeURIComponent(h.market) + "&code=" + encodeURIComponent(h.code))
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (q) {
+          if (!q) return;
+          var base = DATA.stocks[h.id] || liveStocks[h.id] || {};
+          liveStocks[h.id] = Object.assign({}, base, { price: q });
+          if (view.name === "list" || (view.name === "detail" && view.id === h.id)) render();
+        }).catch(function () { /* 이번 주기는 건너뜀 */ });
+    });
+  }
+
   /* ── 저장소 연결 ─────────────────────── */
   render();
-  var use = window.claude && window.claude.use ? window.claude.use("db") : Promise.resolve(null);
-  Promise.resolve(use).then(function (ns) {
-    if (!ns) return;
-    db = ns;
-    var first = true;
+  if (DATA.site_storage) {
+    db = siteDb();
+    var siteFirst = true;
     db.collection("holdings").onSnapshot(function (snap) {
       holdings = snap.docs.map(function (d) { return Object.assign({}, d.data(), { id: d.id }); })
         .sort(function (a, b) { return String(a.added_at || "").localeCompare(String(b.added_at || "")); });
-      // 편집 중인 입력을 지우지 않도록, 목록 화면이거나 처음 받을 때만 다시 그림
-      if (first || view.name === "list") render();
-      if (first) maybeRefresh("open");
-      first = false;
+      if (siteFirst || view.name === "list") render();
+      refreshQuotes();
+      siteFirst = false;
     }, function (e) {
       flash = { text: "저장소 연결이 끊겼습니다 (" + (e && e.code) + "). 새로고침하세요.", err: true };
       render();
     });
-  }).catch(function () { /* 저장소 없이도 동작 */ });
+    setInterval(refreshQuotes, 30000);
+  } else {
+    var use = window.claude && window.claude.use ? window.claude.use("db") : Promise.resolve(null);
+    Promise.resolve(use).then(function (ns) {
+      if (!ns) return;
+      db = ns;
+      var first = true;
+      db.collection("holdings").onSnapshot(function (snap) {
+        holdings = snap.docs.map(function (d) { return Object.assign({}, d.data(), { id: d.id }); })
+          .sort(function (a, b) { return String(a.added_at || "").localeCompare(String(b.added_at || "")); });
+        // 편집 중인 입력을 지우지 않도록, 목록 화면이거나 처음 받을 때만 다시 그림
+        if (first || view.name === "list") render();
+        if (first) maybeRefresh("open");
+        first = false;
+      }, function (e) {
+        flash = { text: "저장소 연결이 끊겼습니다 (" + (e && e.code) + "). 새로고침하세요.", err: true };
+        render();
+      });
+    }).catch(function () { /* 저장소 없이도 동작 */ });
+  }
 })();
 {% endraw %}

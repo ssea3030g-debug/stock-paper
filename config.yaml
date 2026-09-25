@@ -183,6 +183,7 @@ site:
   short_name: 아침증권
   theme_color: "#17160f"
   background_color: "#edeae2"
+  storage: true               # 내 종목 저장 + 시세 새로고침용 /api/* (Cloudflare Pages Functions + KV 필요)
 
 # ── 출력 ─────────────────────────────────────────────────────
 output:
