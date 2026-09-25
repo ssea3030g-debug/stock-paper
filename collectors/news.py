@@ -87,6 +87,7 @@ class NewsCollector(BaseCollector):
     def collect(self) -> SectionResult:
         end = self.ctx.issue_time
         start = end - dt.timedelta(hours=self.cfg.get("lookback_hours", 24))
+        pool_start = end - dt.timedelta(days=self.cfg.get("pool_days", 7))   # 내 종목·찌라시 검색용
         kw = self.cfg.get("keywords") or {}
         inc, exc = kw.get("include") or [], kw.get("exclude") or []
         articles, errors, sources = [], [], []
@@ -105,7 +106,7 @@ class NewsCollector(BaseCollector):
             for e in entries:
                 title = clean(e.get("title"))
                 published = parse_date(e.get("date"))
-                if not title or not published or not (start <= published <= end):
+                if not title or not published or not (pool_start <= published <= end):
                     continue
                 body = clean(e.get("description"))
                 hay = f"{title} {body}"
@@ -125,14 +126,18 @@ class NewsCollector(BaseCollector):
             articles.sort(key=lambda a: a["published"])     # 먼저 나온 기사를 원본으로 남긴다
             articles = self._dedupe(articles)
         articles.sort(key=lambda a: a["published"], reverse=True)
+        pool = articles
+        start_iso = start.astimezone(KST).isoformat(timespec="minutes")
+        articles = [a for a in pool if a["published"] >= start_iso]      # 지면 후보는 최근 24시간만
         limit = self.cfg.get("max_collect", 30)
         for i, a in enumerate(articles[:limit], 1):
             a["id"] = f"n{i}"
-        for i, a in enumerate(articles[limit:], limit + 1):
+        rest = [a for a in pool if "id" not in a]
+        for i, a in enumerate(rest, limit + 1):
             a["id"] = f"n{i}"
         return SectionResult(id=self.id, ok=bool(sources), items=articles[:limit],
                              data={"window": [start.isoformat(timespec="minutes"), end.isoformat(timespec="minutes")],
-                                   "pool": articles},   # 종목 뉴스·찌라시 검색용 전체 기사 (지면에는 items 만)
+                                   "pool": pool},   # 종목 뉴스·찌라시 검색용 전체 기사 (지면에는 items 만)
                              error="; ".join(errors) or None, sources=sources)
 
     def _finnhub(self, feed) -> list[dict]:

@@ -78,11 +78,17 @@ collectors:
 
   news:
     enabled: true
-    lookback_hours: 24
+    lookback_hours: 24       # 지면 '큰 뉴스' 후보 기간
+    pool_days: 7             # 내 종목 뉴스·찌라시 검색 기간
     feeds:
       - { name: "연합뉴스 경제",   url: "https://www.yna.co.kr/rss/economy.xml" }
       - { name: "한국경제 증권",   url: "https://www.hankyung.com/feed/finance" }
       - { name: "매일경제 증권",   url: "https://www.mk.co.kr/rss/50200011/" }
+      - { name: "연합뉴스 산업",   url: "https://www.yna.co.kr/rss/industry.xml" }
+      - { name: "연합뉴스 마켓",   url: "https://www.yna.co.kr/rss/market.xml" }
+      - { name: "매일경제 전체",   url: "https://www.mk.co.kr/rss/40300001/" }
+      - { name: "한국경제 IT",     url: "https://www.hankyung.com/feed/it" }
+      - { name: "한국경제 경제",   url: "https://www.hankyung.com/feed/economy" }
       - { name: "미국 시장 뉴스", type: finnhub, category: general, url: "https://finnhub.io/api/v1/news", public_url: "https://finnhub.io/" }
     keywords:
       include: []            # 비우면 전체. 하나라도 포함하면 통과
