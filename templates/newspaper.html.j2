@@ -234,6 +234,36 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
 .dsec th:first-child,.dsec td:first-child{text-align:left}
 .next{font:600 15px/1.5 var(--f-sans)}
 .next small{display:block;font:400 12.5px/1.5 var(--f-sans);color:var(--muted)}
+
+/* ── 분기 그래프 (검증된 2색: 앰버·그린, 다크 별도) ── */
+:root{--c0:#b87400;--c1:#00805f}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--c0:#bf8210;--c1:#15967a}}
+:root[data-theme="dark"]{--c0:#bf8210;--c1:#15967a}
+.chart{margin:6px 0 10px}
+.chart svg{width:100%;height:auto;display:block}
+.chart .c-grid{stroke:var(--hair);stroke-width:1}
+.chart .c-base{stroke:var(--rule);stroke-width:1}
+.chart .c-ax{font:400 10px var(--f-sans);fill:var(--muted)}
+.chart .c-lbl{font:600 10px var(--f-sans);fill:var(--ink)}
+.chart path.c-s0,.c-leg i.c-s0{fill:var(--c0);background:var(--c0)}
+.chart path.c-s1,.c-leg i.c-s1{fill:var(--c1);background:var(--c1)}
+.chart .c-hit{fill:transparent;cursor:pointer}
+.chart .c-hit.on{fill:var(--ink);fill-opacity:.06}
+.c-leg{display:flex;flex-wrap:wrap;gap:4px 14px;font:500 12px var(--f-sans);color:var(--ink-2);align-items:center}
+.c-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.c-leg .c-unit{margin-left:auto;color:var(--muted);font-weight:400}
+.c-tip{font:500 12.5px/1.4 var(--f-sans);color:var(--ink-2);margin:2px 0 0;min-height:1.4em;font-variant-numeric:tabular-nums}
+.c-tbl summary{font:500 12px var(--f-sans);color:var(--muted);cursor:pointer}
+.fils{list-style:none;margin:8px 0 0;padding:0;border-top:1px solid var(--hair)}
+.fils > li{border-bottom:1px solid var(--hair)}
+.fil{all:unset;box-sizing:border-box;width:100%;display:flex;justify-content:space-between;gap:10px;padding:10px 0;cursor:pointer;
+  font:500 14px/1.45 var(--f-sans);color:var(--ink)}
+.fil.nolink{cursor:default}
+.fil:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.fil .d{font:500 11.5px/1.45 var(--f-sans);color:var(--muted);white-space:nowrap}
+.fbody{padding:0 0 12px}
+.fbody ul{margin:0 0 6px;padding-left:18px;font:400 14px/1.65 var(--f-sans);color:var(--ink-2)}
+.fbody a{font:500 12px var(--f-sans);color:var(--muted)}
 @media (prefers-reduced-motion: no-preference){ a{transition:text-decoration-color .15s} }
 </style>
 {%- if standalone %}

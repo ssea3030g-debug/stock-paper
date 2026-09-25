@@ -36,6 +36,9 @@ RULES = """당신은 한국어 증권 신문의 편집장입니다. 아래 [데�
   규제·정책, 대형 인수합병, 시장 급변 순으로 중요. 생활·부동산 일반·칼럼·광고성·종목 추천 기사는 고르지 마세요.
 - holdings: 종목마다 그 회사 주가에 직접 영향을 줄 기사 최대 {holding_news}개(실적·가이던스·대형 계약·규제·소송·경영진·제품 발표 우선,
   단순 시세 해설·'살까 말까' 류 기사는 제외). 적당한 기사가 없으면 빈 배열.
+- holdings[].filings: 종목의 실적 공시(filings, detail 에 본문 요지) 각각에 대해 핵심 2~3줄(points). 매출·영업이익의 규모와
+  전기·전년 대비 증감을 detail 이나 financials(원 단위, 조원으로 환산해 써도 됨)의 숫자 그대로 쓰세요. 자료가 없으면 그 공시는 빼세요.
+- holdings[].rumors: 종목 찌라시 후보(holdings[].rumors) 중 의미 있는 것 최대 3개, status 기준은 아래 rumors 와 같음.
 - rumors: 찌라시·풍문 후보(reports 의 rid, filings 의 rid) 중 파장이 큰 것 최대 {rumor_items}개.
   status 는 데이터로만 판단: 해명 공시가 부인하면 "회사 부인", 검토 중·미확정이라고 하면 "회사 확인·검토 중", 확정 공시로 사실이라고 하면 "사실로 확인", 그 밖엔 "미확인".
   summary 는 '무슨 소문(보도)인지'를 한두 문장으로. 사실처럼 단정하지 말고 '~라는 보도', '~설' 형태로 쓰세요.
@@ -44,7 +47,9 @@ RULES = """당신은 한국어 증권 신문의 편집장입니다. 아래 [데�
 {
   "headline": {"title": "머리기사 제목 (30자 이내)", "body": "머리기사 한 단락 (3~5문장)"},
   "news": [{"id": "n1", "summary": "2~3문장"}],
-  "holdings": [{"key": "US-NVDA", "news": [{"id": "US-NVDA-n1", "summary": "2문장"}]}],
+  "holdings": [{"key": "KR-005930", "news": [{"id": "KR-005930-n1", "summary": "2문장"}],
+                "filings": [{"id": "KR-005930-f1", "points": ["핵심 1", "핵심 2"]}],
+                "rumors": [{"id": "KR-005930-r1", "summary": "1~2문장", "status": "미확인"}]}],
   "rumors": [{"id": "r1", "summary": "1~2문장", "status": "미확인"}],
   "key_points": ["핵심 1", "핵심 2", "핵심 3"]
 }
@@ -63,8 +68,15 @@ SCHEMA = {
             "key": {"type": "string"},
             "news": {"type": "array", "items": {"type": "object", "properties": {
                 "id": {"type": "string"}, "summary": {"type": "string"}},
-                "required": ["id", "summary"], "additionalProperties": False}}},
-            "required": ["key", "news"], "additionalProperties": False}},
+                "required": ["id", "summary"], "additionalProperties": False}},
+            "filings": {"type": "array", "items": {"type": "object", "properties": {
+                "id": {"type": "string"}, "points": {"type": "array", "items": {"type": "string"}}},
+                "required": ["id", "points"], "additionalProperties": False}},
+            "rumors": {"type": "array", "items": {"type": "object", "properties": {
+                "id": {"type": "string"}, "summary": {"type": "string"},
+                "status": {"type": "string", "enum": ["미확인", "회사 부인", "회사 확인·검토 중", "사실로 확인"]}},
+                "required": ["id", "summary", "status"], "additionalProperties": False}}},
+            "required": ["key", "news", "filings", "rumors"], "additionalProperties": False}},
         "rumors": {"type": "array", "items": {"type": "object", "properties": {
             "id": {"type": "string"}, "summary": {"type": "string"},
             "status": {"type": "string", "enum": ["미확인", "회사 부인", "회사 확인·검토 중", "사실로 확인"]}},
@@ -90,7 +102,10 @@ def build_payload(results: dict, market_status: dict, issue_date: str, cfg: dict
                             "description": (a.get("description") or "")[:n]}
     holdings = [{"key": h["key"], "name": h["name"], "market": h["market"],
                  "price": h.get("price") and {k: h["price"].get(k) for k in ("value", "change", "change_pct", "as_of")},
-                 "earnings": h.get("earnings"), "filings": h.get("filings"),
+                 "earnings": h.get("earnings"), "financials": h.get("financials"),
+                 "filings": [{k: f.get(k) for k in ("id", "date", "title", "kind", "detail")} for f in h.get("filings", [])],
+                 "rumors": [{k: r.get(k) for k in ("id", "kind", "title", "headline", "media", "source", "date", "detail")}
+                            for r in h.get("rumors", [])],
                  "news": [cut(a) for a in h.get("news", [])]}
                 for h in (results.get("holdings") or {}).get("items", [])]
     rum = results.get("rumors") or {}
@@ -137,6 +152,9 @@ def _numbers_in(obj) -> set[str]:
         elif isinstance(o, (int, float)) and not isinstance(o, bool):
             for d in (0, 1, 2, 3):
                 out.add(f"{round(abs(o), d):.{d}f}")
+                if abs(o) >= 1e9:          # 원 단위 금액 → 조원·억원 표기 허용
+                    out.add(f"{round(abs(o) / 1e12, d):.{d}f}")
+                    out.add(f"{round(abs(o) / 1e8, d):.{d}f}")
                 out.add(f"{round(abs(o) / 100, d):.{d}f}")        # 억원→조원 등 단위 변환 대비는 하지 않음
         elif isinstance(o, str):
             out.update(n.replace(",", "") for n in NUM_RE.findall(o))
@@ -175,15 +193,32 @@ def validate(summary: dict, payload: dict, cfg: dict) -> tuple[dict, list[str]]:
             out["news"][n["id"]] = n["summary"].strip()
     out["news"] = dict(list(out["news"].items())[: cfg.get("news_items", 3)])
 
-    hids = {h["key"]: {a["id"] for a in h.get("news", [])} for h in payload.get("holdings", [])}
+    hp = {h["key"]: h for h in payload.get("holdings", [])}
     out["holdings"] = {}
+    out["holding_filings"] = {}
+    out["holding_rumors"] = {}
+    statuses = ("미확인", "회사 부인", "회사 확인·검토 중", "사실로 확인")
     for hk in summary.get("holdings") or []:
         k = hk.get("key")
-        if k not in hids:
+        if k not in hp:
             warnings.append(f"내 종목 {k} 없음 → 제외"); continue
+        nids = {a["id"] for a in hp[k].get("news", [])}
+        fids = {f["id"] for f in hp[k].get("filings", [])}
+        rids = {r["id"] for r in hp[k].get("rumors", [])}
         picked = [{"id": n["id"], "summary": n["summary"].strip()} for n in hk.get("news") or []
-                  if n.get("id") in hids[k] and ok_text(f"{k} {n.get('id')}", n.get("summary"))]
+                  if n.get("id") in nids and ok_text(f"{k} {n.get('id')}", n.get("summary"))]
         out["holdings"][k] = picked[: cfg.get("holding_news", 3)]
+        for f in hk.get("filings") or []:
+            pts = [p.strip() for p in f.get("points") or [] if ok_text(f"{f.get('id')} 요약", p)]
+            if f.get("id") in fids and pts:
+                out["holding_filings"][f["id"]] = pts[:3]
+        rs = []
+        for r in hk.get("rumors") or []:
+            if r.get("id") in rids and ok_text(f"{r.get('id')} 찌라시", r.get("summary")):
+                rs.append({"id": r["id"], "summary": r["summary"].strip(),
+                           "status": r.get("status") if r.get("status") in statuses else "미확인"})
+        if rs or hk.get("rumors") is not None:
+            out["holding_rumors"][k] = rs[:3]
 
     rum = payload.get("rumors") or {}
     rids = {r["rid"] for r in rum.get("reports", [])} | {f["rid"] for f in rum.get("filings", [])}
@@ -249,7 +284,8 @@ def extractive(payload: dict, cfg: dict) -> dict:
     while len(kps) < cfg.get("key_points", 3):
         kps.append("데이터 없음")
     # 기사별 요약은 비워 두면 지면에서 기사 첫 문장을 사용한다
-    return {"headline": headline, "news": {}, "holdings": {}, "rumors": [], "key_points": kps[: cfg.get("key_points", 3)]}
+    return {"headline": headline, "news": {}, "holdings": {}, "rumors": [], "holding_filings": {}, "holding_rumors": {},
+            "key_points": kps[: cfg.get("key_points", 3)]}
 
 
 # ── API ────────────────────────────────────────────────────────
@@ -294,6 +330,6 @@ def summarize(payload: dict, cfg: dict, summary_file: Path | None = None) -> dic
         clean, warnings = validate(raw, payload, cfg)
         for w in warnings:
             log.warning("요약 검증: %s", w)
-        result.update({k: v for k, v in clean.items() if v or k in ("holdings", "rumors")})
+        result.update({k: v for k, v in clean.items() if v or k in ("holdings", "rumors", "holding_filings", "holding_rumors")})
         result["provider"], result["warnings"] = used, warnings
     return result

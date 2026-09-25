@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import re
 from pathlib import Path
 
@@ -82,7 +83,8 @@ def render_issue(cfg: dict, bundle: dict, summary: dict, out_dir: Path, standalo
                 "holdings_at": bundle.get("holdings_at") or bundle.get("collected_at", ""),
                 "refresh_trigger": (cfg.get("app") or {}).get("refresh_trigger_id", ""),
                 "refresh_after_min": (cfg.get("app") or {}).get("refresh_after_min", 30),
-                "stocks": stocks, "snapshot": bundle.get("holdings") or [], "sample": bool(bundle.get("sample"))}
+                "stocks": stocks, "snapshot": bundle.get("holdings") or [], "sample": bool(bundle.get("sample")),
+                "names": name_lists()}
     ear = [i for sec in ("korea_market", "us_market") for i in (results.get(sec) or {}).get("items", [])][:5]
 
     dates = set(archive_dates(out_dir, issue)) | {dt.date.fromisoformat(d) for d in (extra_archive or [])}
@@ -100,6 +102,20 @@ def render_issue(cfg: dict, bundle: dict, summary: dict, out_dir: Path, standalo
     )
 
 
+def name_lists() -> dict:
+    """종목 추가 자동완성용: 국내 상장사 [이름, 코드] 전체 + 미국 종목 한글 이름 → 티커."""
+    root = Path(__file__).resolve().parent.parent
+    kr, us = [], {}
+    cache = root / "output" / "data" / "dart_corpcodes.json"
+    if cache.exists():
+        m = json.loads(cache.read_text(encoding="utf-8")).get("map", {})
+        kr = sorted(([c["name"], code] for code, c in m.items()), key=lambda x: len(x[0]))
+    usf = root / "data" / "us_names_ko.json"
+    if usf.exists():
+        us = json.loads(usf.read_text(encoding="utf-8"))
+    return {"kr": kr, "us": us}
+
+
 def build_stocks(results: dict, summary: dict, snapshot: list) -> dict:
     """내 종목 탭에 넣을 종목별 상세 (key → dict). 중요 뉴스는 Claude 가 고른 것, 없으면 최신 3개."""
     out = {}
@@ -109,7 +125,22 @@ def build_stocks(results: dict, summary: dict, snapshot: list) -> dict:
         chosen = [{**by_id[p["id"]], "summary": p["summary"]} for p in picks.get(h["key"], []) if p["id"] in by_id]
         if not chosen and h["key"] not in picks:
             chosen = [{**a, "summary": a.get("first_sentence") or ""} for a in h.get("news", [])[:3]]
-        out[h["key"]] = {k: h.get(k) for k in ("key", "market", "code", "name", "exchange", "price", "earnings", "filings")}
+        out[h["key"]] = {k: h.get(k) for k in ("key", "market", "code", "name", "exchange", "price", "earnings",
+                                                "financials", "db_id")}
+        fpts = summary.get("holding_filings") or {}
+        out[h["key"]]["filings"] = [{**{k: f.get(k) for k in ("id", "date", "title", "url", "kind")},
+                                     "points": fpts.get(f["id"], [])} for f in h.get("filings", [])]
+        rpick = (summary.get("holding_rumors") or {}).get(h["key"])
+        rby = {r["id"]: r for r in h.get("rumors", [])}
+        if rpick is not None:
+            rum = [{**rby[p["id"]], "summary": p["summary"], "status": p["status"]} for p in rpick if p["id"] in rby]
+        else:
+            rum = [{**r, "summary": "", "status": "회사 해명 공시" if r["kind"] == "filing" else "미확인"} for r in h.get("rumors", [])[:3]]
+        out[h["key"]]["rumors"] = [{"title": (f"{r.get('headline')}" if r.get("headline") else r.get("title")),
+                                    "url": r.get("url"), "date": (r.get("date") or "")[:16].replace("T", " "),
+                                    "source": (f"{r.get('media') or '언론'} 보도 · 회사 해명 공시" if r.get("kind") == "filing"
+                                               else r.get("source")), "summary": r.get("summary"), "status": r.get("status")}
+                                   for r in rum]
         out[h["key"]]["news"] = [{k: a.get(k) for k in ("title", "url", "source", "published", "summary", "lang")}
                                  for a in chosen]
         out[h["key"]]["picked"] = h["key"] in picks
