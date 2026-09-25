@@ -9,6 +9,9 @@
   전체를 한 번 다시 만듭니다. 없으면 아무것도 하지 않습니다. (claude.ai 밖에서는 종목을 추가한
   '그 순간'을 부를 방법이 없어서, 최대 1시간 지연으로 대신합니다.)
 
+요약 파일의 holdings[].advice(AI 매도 점검)는 사용자가 '투자 판단과 책임은 본인에게 있음'을 확인하고 요청한
+개인 참고용이므로 프롬프트 규칙대로 작성한다 (머리기사·뉴스·찌라시는 여전히 투자 권유 금지).
+
 내 종목 목록은 `config.yaml` 의 `site.pages_url` 이 채워져 있으면 Cloudflare KV(`/api/holdings`)에서,
 비어 있으면 `data/site_holdings.json` 에서 가져옵니다 — `scripts/site_holdings.py` 가 이 판단을 대신합니다.
 

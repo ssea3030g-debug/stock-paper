@@ -14,7 +14,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from . import fmt
+from . import fmt, summarizer
 
 TEMPLATES = Path(__file__).resolve().parent.parent / "templates"
 DATE_FILE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.html$")
@@ -131,6 +131,7 @@ def name_lists(cache: Path | None = None) -> dict:
 def build_stocks(results: dict, summary: dict, snapshot: list) -> dict:
     """내 종목 탭에 넣을 종목별 상세 (key → dict). 중요 뉴스는 Claude 가 고른 것, 없으면 최신 3개."""
     out = {}
+    fx = (usdkrw(results) or {}).get("rate")
     picks = summary.get("holdings") or {}
     for h in (results.get("holdings") or {}).get("items", []):
         by_id = {a["id"]: a for a in h.get("news", [])}
@@ -156,6 +157,12 @@ def build_stocks(results: dict, summary: dict, snapshot: list) -> dict:
         out[h["key"]]["news"] = [{k: a.get(k) for k in ("title", "url", "source", "published", "summary", "lang")}
                                  for a in chosen]
         out[h["key"]]["picked"] = h["key"] in picks
+        # 배당·가격 흐름·애널리스트 의견·기준선 후보와 AI 매도 점검(요약에 있을 때만)
+        out[h["key"]]["dividends"] = h.get("dividends") or None
+        out[h["key"]]["signals"] = h.get("signals") or None
+        out[h["key"]]["analyst"] = h.get("analyst")
+        out[h["key"]]["levels"] = summarizer.levels(h, fx)
+        out[h["key"]]["advice"] = (summary.get("holding_advice") or {}).get(h["key"])
     return out
 
 

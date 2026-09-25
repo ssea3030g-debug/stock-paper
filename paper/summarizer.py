@@ -26,7 +26,8 @@ RULES = """당신은 한국어 증권 신문의 편집장입니다. 아래 [데�
 1. [데이터]에 없는 사실·수치·원인·전망을 만들어 내지 마세요. 원인이 데이터에 없으면 원인을 쓰지 마세요.
 2. 수치는 [데이터]의 값을 그대로(반올림은 표시 자릿수까지만) 쓰고, 기준일을 헷갈리지 않게 쓰세요.
 3. value 가 null 인 항목은 "데이터 없음", change 가 null 이면 전일 대비 변동을 쓰지 마세요.
-4. 투자 권유·종목 추천·매수/매도 의견·목표가·수익 전망 표현 금지. 사실 전달만 합니다.
+4. 머리기사·뉴스·찌라시·핵심 줄에는 투자 권유·종목 추천·매수/매도 의견·목표가·수익 전망 표현 금지. 사실 전달만 합니다.
+   (예외: 아래 holdings[].advice — 사용자가 '투자 책임은 본인에게 있음'을 확인하고 따로 요청한 개인 참고용 점검)
 5. 기사 요약은 그 기사의 title 과 description 에 있는 내용만 씁니다. 영어 기사는 한국어로 옮겨 씁니다.
 6. 휴장 정보(market_status)가 있으면 머리기사에서 국내 수치가 어느 거래일 기준인지 밝히세요.
 7. 문체: 신문 기사체(~했다, ~이다). 과장·감탄 없이 담담하게.
@@ -39,6 +40,15 @@ RULES = """당신은 한국어 증권 신문의 편집장입니다. 아래 [데�
 - holdings[].filings: 종목의 실적 공시(filings, detail 에 본문 요지) 각각에 대해 핵심 2~3줄(points). 매출·영업이익의 규모와
   전기·전년 대비 증감을 detail 이나 financials(원 단위, 조원으로 환산해 써도 됨)의 숫자 그대로 쓰세요. 자료가 없으면 그 공시는 빼세요.
 - holdings[].rumors: 종목 찌라시 후보(holdings[].rumors) 중 의미 있는 것 최대 3개, status 기준은 아래 rumors 와 같음.
+- holdings[].advice (AI 매도 점검 — 참고용): 종목마다 position(보유 수량·평균 단가), signals(이동평균·등락·52주 위치),
+  dividends, analyst(미국만), earnings(실적 발표 일정), 뉴스·공시·찌라시를 보고 '지금 팔 때인지'를 조건별로 점검합니다.
+  · conditions 3~6개: 스스로 판단 조건을 세우고 데이터로 충족 여부(met)와 근거(detail, 1문장)를 씁니다.
+    예) 평균 단가 대비 수익률이 +20% 이상인가, 52주 고점 근처(pos_1y 90 이상)인가, 20일선·60일선 아래로 내려왔는가,
+        1개월 급등(ret_1m)이 과한가, 실적 발표가 2주 안에 있는가, 애널리스트 매도 의견이 늘었는가, 악재 공시·찌라시가 있는가.
+  · view 는 "보유 유지" / "일부 매도 검토" / "매도 검토" / "추가 매수 검토" / "판단 보류" 중 하나. 조건이 부족하면 "판단 보류".
+  · target(추천 목표가)과 stop(손절 참고선)은 반드시 levels 의 key 중에서 고릅니다(없으면 null). 숫자를 새로 만들지 마세요.
+  · sell_timing: 언제·어떤 조건이면 파는 것을 검토할지 1~2문장 (예: '○○선 아래로 두 번 연속 마감하면', '목표가 근처에서 나눠서').
+  · summary: 2~3문장. 단정·보장 표현(반드시, 확실히, 무조건, 보장) 금지. 숫자는 데이터에 있는 값만.
 - rumors: 찌라시·풍문 후보(reports 의 rid, filings 의 rid) 중 파장이 큰 것 최대 {rumor_items}개.
   status 는 데이터로만 판단: 해명 공시가 부인하면 "회사 부인", 검토 중·미확정이라고 하면 "회사 확인·검토 중", 확정 공시로 사실이라고 하면 "사실로 확인", 그 밖엔 "미확인".
   summary 는 '무슨 소문(보도)인지'를 한두 문장으로. 사실처럼 단정하지 말고 '~라는 보도', '~설' 형태로 쓰세요.
@@ -49,12 +59,43 @@ RULES = """당신은 한국어 증권 신문의 편집장입니다. 아래 [데�
   "news": [{"id": "n1", "summary": "2~3문장"}],
   "holdings": [{"key": "KR-005930", "news": [{"id": "KR-005930-n1", "summary": "2문장"}],
                 "filings": [{"id": "KR-005930-f1", "points": ["핵심 1", "핵심 2"]}],
-                "rumors": [{"id": "KR-005930-r1", "summary": "1~2문장", "status": "미확인"}]}],
+                "rumors": [{"id": "KR-005930-r1", "summary": "1~2문장", "status": "미확인"}],
+                "advice": {"view": "보유 유지", "target": "hi_1y", "stop": "ma60", "sell_timing": "1~2문장",
+                           "conditions": [{"name": "조건", "met": true, "detail": "근거 1문장"}], "summary": "2~3문장"}}],
   "rumors": [{"id": "r1", "summary": "1~2문장", "status": "미확인"}],
   "key_points": ["핵심 1", "핵심 2", "핵심 3"]
 }
 - key_points 는 정확히 {key_points}개, 각 60자 이내.
 """
+
+ADVICE_VIEWS = ("보유 유지", "일부 매도 검토", "매도 검토", "추가 매수 검토", "판단 보류")
+ADVICE_BANNED = ("반드시", "확실히", "무조건", "보장", "틀림없이")
+
+
+def levels(h: dict, fx: float | None) -> dict:
+    """AI 가 목표가·손절선을 고를 기준선 후보 (그 종목 통화). 숫자를 지어내지 않게 여기서 계산해 둔다."""
+    sg = h.get("signals") or {}
+    out = {}
+    def add(k, label, v):
+        if v:
+            out[k] = {"label": label, "value": round(v, 4 if v < 100 else 2)}
+    add("hi_1y", "52주(1년) 고점", sg.get("high_1y"))
+    add("lo_1y", "52주(1년) 저점", sg.get("low_1y"))
+    add("ma20", "20일 이동평균", sg.get("ma20"))
+    add("ma60", "60일 이동평균", sg.get("ma60"))
+    add("ma120", "120일 이동평균", sg.get("ma120"))
+    avg = h.get("avg")
+    cur = "KRW" if h.get("market") == "KR" else "USD"
+    acur = h.get("avg_cur") or cur
+    if avg and acur != cur:   # 원화로 넣은 미국 종목 평균 단가 → 달러
+        avg = avg / fx if fx else None
+    if avg:
+        for pct in (20, 30, 50):
+            add(f"avg_p{pct}", f"평균 단가 +{pct}%", avg * (1 + pct / 100))
+        for pct in (10, 20):
+            add(f"avg_m{pct}", f"평균 단가 −{pct}%", avg * (1 - pct / 100))
+    return out
+
 
 SCHEMA = {
     "type": "object",
@@ -75,7 +116,15 @@ SCHEMA = {
             "rumors": {"type": "array", "items": {"type": "object", "properties": {
                 "id": {"type": "string"}, "summary": {"type": "string"},
                 "status": {"type": "string", "enum": ["미확인", "회사 부인", "회사 확인·검토 중", "사실로 확인"]}},
-                "required": ["id", "summary", "status"], "additionalProperties": False}}},
+                "required": ["id", "summary", "status"], "additionalProperties": False}},
+            "advice": {"type": "object", "properties": {
+                "view": {"type": "string", "enum": list(ADVICE_VIEWS)},
+                "target": {"type": ["string", "null"]}, "stop": {"type": ["string", "null"]},
+                "sell_timing": {"type": "string"}, "summary": {"type": "string"},
+                "conditions": {"type": "array", "items": {"type": "object", "properties": {
+                    "name": {"type": "string"}, "met": {"type": "boolean"}, "detail": {"type": "string"}},
+                    "required": ["name", "met", "detail"], "additionalProperties": False}}},
+                "required": ["view", "target", "stop", "sell_timing", "conditions", "summary"], "additionalProperties": False}},
             "required": ["key", "news", "filings", "rumors"], "additionalProperties": False}},
         "rumors": {"type": "array", "items": {"type": "object", "properties": {
             "id": {"type": "string"}, "summary": {"type": "string"},
@@ -98,6 +147,8 @@ def build_payload(results: dict, market_status: dict, issue_date: str, cfg: dict
                 for i in r["items"]]
 
     news = results.get("news", {}).get("items", [])[:40]
+    fx = next((i.get("value") for i in (results.get("indicators") or {}).get("items", [])
+               if (i.get("extra") or {}).get("id") == "usdkrw"), None)
     cut = lambda a, n=300: {**{k: a.get(k) for k in ("id", "title", "source", "published")},
                             "description": (a.get("description") or "")[:n]}
     holdings = [{"key": h["key"], "name": h["name"], "market": h["market"],
@@ -106,7 +157,13 @@ def build_payload(results: dict, market_status: dict, issue_date: str, cfg: dict
                  "filings": [{k: f.get(k) for k in ("id", "date", "title", "kind", "detail")} for f in h.get("filings", [])],
                  "rumors": [{k: r.get(k) for k in ("id", "kind", "title", "headline", "media", "source", "date", "detail")}
                             for r in h.get("rumors", [])],
-                 "news": [cut(a) for a in h.get("news", [])]}
+                 "news": [cut(a) for a in h.get("news", [])],
+                 "position": {"qty": h.get("qty"), "avg": h.get("avg"),
+                              "avg_currency": h.get("avg_cur") or ("KRW" if h["market"] == "KR" else "USD")},
+                 "signals": h.get("signals") or None,
+                 "dividends": {k: v for k, v in (h.get("dividends") or {}).items() if k != "history"} or None,
+                 "analyst": h.get("analyst"),
+                 "levels": levels(h, fx)}
                 for h in (results.get("holdings") or {}).get("items", [])]
     rum = results.get("rumors") or {}
     return {
@@ -197,6 +254,7 @@ def validate(summary: dict, payload: dict, cfg: dict) -> tuple[dict, list[str]]:
     out["holdings"] = {}
     out["holding_filings"] = {}
     out["holding_rumors"] = {}
+    out["holding_advice"] = {}
     statuses = ("미확인", "회사 부인", "회사 확인·검토 중", "사실로 확인")
     for hk in summary.get("holdings") or []:
         k = hk.get("key")
@@ -219,6 +277,11 @@ def validate(summary: dict, payload: dict, cfg: dict) -> tuple[dict, list[str]]:
                            "status": r.get("status") if r.get("status") in statuses else "미확인"})
         if rs or hk.get("rumors") is not None:
             out["holding_rumors"][k] = rs[:3]
+        adv = hk.get("advice")
+        if isinstance(adv, dict):
+            a, lv = _check_advice(k, adv, hp[k].get("levels") or {}, ok_text, warnings)
+            if a:
+                out["holding_advice"][k] = a
 
     rum = payload.get("rumors") or {}
     rids = {r["rid"] for r in rum.get("reports", [])} | {f["rid"] for f in rum.get("filings", [])}
@@ -237,6 +300,29 @@ def validate(summary: dict, payload: dict, cfg: dict) -> tuple[dict, list[str]]:
     elif summary.get("key_points"):
         warnings.append("핵심 줄 수 부족 → 자동 문장 사용")
     return out, warnings
+
+
+def _check_advice(k: str, adv: dict, lv: dict, ok_text, warnings: list) -> tuple[dict | None, dict]:
+    """AI 매도 점검 검증: 판단은 정해진 말 중 하나, 목표가·손절선은 levels 의 key, 문장은 데이터에 있는 숫자만·단정 표현 금지."""
+    if adv.get("view") not in ADVICE_VIEWS:
+        warnings.append(f"{k} 점검: 판단 '{adv.get('view')}' 형식 아님 → 제외"); return None, lv
+    def text_ok(label, t):
+        if isinstance(t, str) and any(b in t for b in ADVICE_BANNED):
+            warnings.append(f"{label}: 단정·보장 표현 → 제외"); return False
+        return ok_text(label, t)
+    conds = [{"name": c["name"].strip(), "met": bool(c.get("met")), "detail": c["detail"].strip()}
+             for c in adv.get("conditions") or [] if isinstance(c, dict) and isinstance(c.get("name"), str)
+             and text_ok(f"{k} 점검 조건", c.get("detail"))]
+    if len(conds) < 2 or not text_ok(f"{k} 점검 요약", adv.get("summary")):
+        warnings.append(f"{k} 점검: 근거 부족 → 제외"); return None, lv
+    pick = lambda key: key if key in lv else None
+    for f in ("target", "stop"):
+        if adv.get(f) and adv.get(f) not in lv:
+            warnings.append(f"{k} 점검 {f}: 기준선 '{adv.get(f)}' 없음 → 비움")
+    timing = adv.get("sell_timing")
+    return {"view": adv["view"], "target": pick(adv.get("target")), "stop": pick(adv.get("stop")),
+            "sell_timing": timing.strip() if text_ok(f"{k} 매도 시기", timing) else "",
+            "conditions": conds[:6], "summary": adv["summary"].strip()}, lv
 
 
 # ── extractive (AI 없이) ────────────────────────────────────────
@@ -284,7 +370,7 @@ def extractive(payload: dict, cfg: dict) -> dict:
     while len(kps) < cfg.get("key_points", 3):
         kps.append("데이터 없음")
     # 기사별 요약은 비워 두면 지면에서 기사 첫 문장을 사용한다
-    return {"headline": headline, "news": {}, "holdings": {}, "rumors": [], "holding_filings": {}, "holding_rumors": {},
+    return {"headline": headline, "news": {}, "holdings": {}, "rumors": [], "holding_filings": {}, "holding_rumors": {}, "holding_advice": {},
             "key_points": kps[: cfg.get("key_points", 3)]}
 
 
@@ -330,6 +416,6 @@ def summarize(payload: dict, cfg: dict, summary_file: Path | None = None) -> dic
         clean, warnings = validate(raw, payload, cfg)
         for w in warnings:
             log.warning("요약 검증: %s", w)
-        result.update({k: v for k, v in clean.items() if v or k in ("holdings", "rumors", "holding_filings", "holding_rumors")})
+        result.update({k: v for k, v in clean.items() if v or k in ("holdings", "rumors", "holding_filings", "holding_rumors", "holding_advice")})
         result["provider"], result["warnings"] = used, warnings
     return result

@@ -60,3 +60,22 @@ def last_close(http: HttpClient, symbol: str, name: str, *, on_or_before: dt.dat
                "high52": meta.get("fiftyTwoWeekHigh"), "low52": meta.get("fiftyTwoWeekLow"),
                **({"prev_missing": rows[last - 1][0].isoformat()} if last > 0 and prev is None else {})},
     )
+
+
+HIST_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range={rng}&interval=1d&events=div"
+
+
+def history(http: HttpClient, symbol: str, rng: str = "2y") -> dict:
+    """일별 종가와 배당 이력. {"closes": [(date, close)], "dividends": [(date, amount)], "currency", "tz"}.
+    종가가 비어 있는 날(None)은 뺀다 (이동평균·등락 계산용)."""
+    data = http.get_json(HIST_URL.format(sym=quote(symbol, safe=""), rng=rng))
+    res = (data.get("chart") or {}).get("result") or []
+    if not res:
+        raise ValueError(f"Yahoo 응답 없음: {symbol}")
+    r = res[0]
+    tz = ZoneInfo(r["meta"].get("exchangeTimezoneName", "UTC"))
+    closes = [(dt.datetime.fromtimestamp(ts, tz).date(), float(c))
+              for ts, c in zip(r.get("timestamp") or [], r["indicators"]["quote"][0]["close"]) if c is not None]
+    divs = sorted((dt.datetime.fromtimestamp(int(v["date"]), tz).date(), float(v["amount"]))
+                  for v in ((r.get("events") or {}).get("dividends") or {}).values())
+    return {"closes": closes, "dividends": divs, "currency": r["meta"].get("currency"), "tz": str(tz)}

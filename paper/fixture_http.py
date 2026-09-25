@@ -41,6 +41,7 @@ DEFAULT_ROUTES = [
     ("finnhub.io/api/v1/news", None, "finnhub_general.json"),
     ("finnhub.io/api/v1/quote", None, "finnhub_quote.json"),
     ("finnhub.io/api/v1/stock/metric", None, "finnhub_metric.json"),
+    ("finnhub.io/api/v1/stock/recommendation", None, "finnhub_recommendation.json"),
 
     ("oauth2/tokenP", None, "kis_token.json"),
     ("inquire-investor", None, "kis_flows.json"),

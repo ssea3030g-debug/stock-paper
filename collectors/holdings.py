@@ -66,14 +66,16 @@ class HoldingsCollector(BaseCollector):
             return SectionResult(id=self.id, ok=True, note="앱의 ‘내 종목’ 탭에서 종목을 추가하세요.")
         out, errors = [], []
         self._corp_map: dict | None = None
+        self._hist: dict = {}
         for h in items:
             h = self._resolve(h)
             self._kr_rows = []
             info = {"key": key_of(h), "market": h["market"], "code": h["code"], "name": h.get("name") or h["code"],
                     "db_id": h.get("id"), "resolved_from": h.get("name") if h.get("id") and h.get("id") != key_of(h) else None,
-                    "qty": h.get("qty"), "avg": h.get("avg"), "price": None, "news": [], "earnings": {},
-                    "filings": [], "financials": [], "rumors": [], "errors": []}
-            for part in (self._price, self._news, self._earnings, self._rumors):
+                    "qty": h.get("qty"), "avg": h.get("avg"), "avg_cur": h.get("avg_cur"), "price": None, "news": [],
+                    "earnings": {}, "filings": [], "financials": [], "rumors": [], "errors": [],
+                    "signals": {}, "dividends": {}, "analyst": None}
+            for part in (self._price, self._news, self._earnings, self._rumors, self._history, self._analyst):
                 try:
                     part(h, info)
                 except Exception as e:  # noqa: BLE001 — 한 항목 실패는 그 칸만 비움
@@ -125,6 +127,11 @@ class HoldingsCollector(BaseCollector):
                 self.log.warning("%s Finnhub 시세 실패 → Yahoo: %s", h["code"], self.ctx.http.redact(str(e))
                                  if hasattr(self.ctx.http, "redact") else e)
         live = self.cfg.get("live")
+        if h["market"] == "KR" and not live:
+            try:
+                return self._price_from_hist(h, info)
+            except Exception as e:  # noqa: BLE001
+                self.log.info("%s 이력으로 시세 못 만듦 → 따로 조회: %s", h["code"], e)
         if h["market"] == "US":
             # Yahoo 는 클래스 주식을 BRK-B 로 씀 (저장·Finnhub 는 BRK.B)
             cutoff, label, symbols = self.ctx.issue_date - dt.timedelta(days=1), "16:00 ET", [h["code"].replace(".", "-")]
@@ -151,6 +158,22 @@ class HoldingsCollector(BaseCollector):
                          "high52": dp.extra.get("high52"), "low52": dp.extra.get("low52"),
                          "source": "Yahoo Finance", "url": dp.source_url}
 
+    def _price_from_hist(self, h, info):
+        """국내 종목 종가: 기준 거래일 이하 마지막 종가와 바로 전 거래일 비교 (yahoo.last_close 와 같은 규칙)."""
+        hist = self._yahoo_hist(h)
+        cutoff = dt.date.fromisoformat(self.ctx.market_status["last_session"])
+        rows = [(d, v) for d, v in hist["closes"] if d <= cutoff]
+        if not rows:
+            raise ValueError("기준일 이전 종가 없음")
+        (d, c), prev = rows[-1], (rows[-2][1] if len(rows) > 1 else None)
+        yr = [v for dd, v in rows if dd > d - dt.timedelta(days=365)]
+        sym = hist["symbol"]
+        info["exchange"] = {"KS": "코스피", "KQ": "코스닥"}.get(sym.rsplit(".", 1)[-1], "국내")
+        info["price"] = {"value": c, "change": (c - prev) if prev else None,
+                         "change_pct": ((c / prev - 1) * 100) if prev else None, "as_of": f"{d.isoformat()} 15:30 KST",
+                         "currency": hist.get("currency") or "KRW", "high52": max(yr), "low52": min(yr),
+                         "source": "Yahoo Finance", "url": f"https://finance.yahoo.com/quote/{sym}"}
+
     def _price_finnhub(self, h, info, key):
         """미국 종목 시세 (Finnhub 공식 API). 장 마감 뒤에는 종가, 장중에는 최근 체결가 — 기준 시각을 함께 적는다."""
         q = self.ctx.http.get_json(f"{FINNHUB}/quote", params={"symbol": h["code"], "token": key})
@@ -162,6 +185,8 @@ class HoldingsCollector(BaseCollector):
             m = (self.ctx.http.get_json(f"{FINNHUB}/stock/metric", params={"symbol": h["code"], "metric": "all",
                                                                           "token": key}) or {}).get("metric") or {}
             high52, low52 = m.get("52WeekHigh"), m.get("52WeekLow")
+            info["_metric"] = {k: m.get(k) for k in ("dividendYieldIndicatedAnnual", "currentDividendYieldTTM",
+                                                     "dividendPerShareTTM", "payoutRatioTTM", "dividendGrowthRate5Y")}
         except Exception as e:  # noqa: BLE001   52주 범위만 빠짐
             self.log.info("%s 52주 범위 없음: %s", h["code"], e)
         if not (high52 and low52 and low52 * 0.9 <= q["c"] <= high52 * 1.1):
@@ -177,6 +202,68 @@ class HoldingsCollector(BaseCollector):
         info["price"] = {"value": q["c"], "change": q.get("d"), "change_pct": q.get("dp"),
                          "as_of": f"{t:%Y-%m-%d %H:%M} ET", "currency": "USD", "high52": high52, "low52": low52,
                          "source": "Finnhub", "url": f"https://finnhub.io/api/v1/quote?symbol={h['code']}"}
+
+    # ── 가격 흐름(이동평균·등락·52주 위치)과 배당 ─────────────
+    def _yahoo_hist(self, h) -> dict:
+        """종목의 Yahoo 2년 일별 종가·배당 이력 (한 번만 받아 캐시). 국내는 .KS → .KQ 순."""
+        k = key_of(h)
+        if k in self._hist:
+            if isinstance(self._hist[k], Exception):
+                raise self._hist[k]
+            return self._hist[k]
+        syms = [h["code"].replace(".", "-")] if h["market"] == "US" else [h["code"] + ".KS", h["code"] + ".KQ"]
+        last_err: Exception = ValueError("가격 이력 없음")
+        for sym in syms:
+            try:
+                hist = yahoo.history(self.ctx.http, sym, "2y")
+                if hist["closes"]:
+                    hist["symbol"] = sym
+                    self._hist[k] = hist
+                    return hist
+            except Exception as e:  # noqa: BLE001
+                last_err = e
+        self._hist[k] = last_err
+        raise last_err
+
+    def _history(self, h, info):
+        """Yahoo 2년 일별 종가·배당 이력 → signals(판단 조건용 수치), dividends. 모두 그 종목 통화 기준."""
+        hist = self._yahoo_hist(h)
+        c = [v for _, v in hist["closes"]]
+        last_d, last = hist["closes"][-1]
+        yr = [v for d, v in hist["closes"] if d > last_d - dt.timedelta(days=365)]
+        ma = lambda n: round(sum(c[-n:]) / n, 4) if len(c) >= n else None
+        ret = lambda n: round((last / c[-1 - n] - 1) * 100, 2) if len(c) > n else None
+        hi, lo = max(yr), min(yr)
+        info["signals"] = {"as_of": last_d.isoformat(), "last": last, "ma20": ma(20), "ma60": ma(60), "ma120": ma(120),
+                           "ret_1m": ret(21), "ret_3m": ret(63), "ret_1y": ret(min(len(c) - 1, 250)) if len(c) > 200 else None,
+                           "high_1y": hi, "low_1y": lo, "pos_1y": round((last - lo) / (hi - lo) * 100, 1) if hi > lo else None,
+                           "from_high_pct": round((last / hi - 1) * 100, 2), "currency": hist["currency"],
+                           "source": "Yahoo Finance 일별 종가"}
+        divs = hist["dividends"]
+        ttm = [(d, a) for d, a in divs if d > last_d - dt.timedelta(days=365)]
+        dv = {"history": [{"date": d.isoformat(), "amount": a} for d, a in divs[-8:]], "currency": hist["currency"],
+              "ttm_per_share": round(sum(a for _, a in ttm), 4) if ttm else None,
+              "ttm_yield_pct": round(sum(a for _, a in ttm) / last * 100, 2) if ttm and last else None,
+              "count_ttm": len(ttm), "source": "Yahoo Finance 배당 이력"}
+        m = info.pop("_metric", None) or {}
+        if m:   # 미국: Finnhub 공식 지표 (배당수익률·배당성향·5년 성장률)
+            dv.update({"yield_indicated_pct": m.get("dividendYieldIndicatedAnnual"), "payout_ratio_pct": m.get("payoutRatioTTM"),
+                       "growth_5y_pct": m.get("dividendGrowthRate5Y"), "source": "Finnhub 지표 · Yahoo Finance 배당 이력"})
+        info["dividends"] = dv
+
+    def _analyst(self, h, info):
+        """미국 종목 애널리스트 투자의견 분포 (Finnhub 무료). 목표가는 무료 요금제에 없어 받지 않음."""
+        info.pop("_metric", None)
+        if h["market"] != "US":
+            return
+        key = self.key("FINNHUB_API_KEY")
+        if not key:
+            return
+        rows = self.ctx.http.get_json(f"{FINNHUB}/stock/recommendation", params={"symbol": h["code"], "token": key})
+        if isinstance(rows, list) and rows:
+            r = rows[0]
+            info["analyst"] = {k: r.get(k) for k in ("period", "strongBuy", "buy", "hold", "sell", "strongSell")}
+            info["analyst"]["source"] = "Finnhub 애널리스트 투자의견"
 
     # ── 뉴스 ─────────────────────────────────────────────
     def _news(self, h, info):

@@ -137,5 +137,49 @@ class NameListTest(unittest.TestCase):
         self.assertIn(["삼성전자", "005930"], kr)
 
 
+
+class AdviceTest(unittest.TestCase):
+    H = {"key": "US-ORCL", "market": "US", "avg": 140.43, "signals": {"high_1y": 325.0, "low_1y": 114.5, "ma20": 150.2,
+         "ma60": 160.8, "ma120": None, "pos_1y": 10.9, "ret_1m": -4.2}}
+
+    def test_levels_are_computed_not_invented(self):
+        lv = summarizer.levels(self.H, 1355.0)
+        self.assertEqual(lv["hi_1y"]["value"], 325.0)
+        self.assertEqual(lv["avg_p20"]["value"], round(140.43 * 1.2, 2))
+        self.assertNotIn("ma120", lv)
+        krw = summarizer.levels(dict(self.H, avg=190000, avg_cur="KRW"), 1000.0)   # 원화 평균 단가 → 달러
+        self.assertEqual(krw["avg_m10"]["value"], 171.0)
+
+    def payload(self):
+        lv = summarizer.levels(self.H, None)
+        return {"news": [], "holdings": [{"key": "US-ORCL", "news": [], "filings": [], "rumors": [], "levels": lv,
+                                          "signals": self.H["signals"]}], "rumors": {}}
+
+    def advice(self, **kw):
+        a = {"view": "일부 매도 검토", "target": "hi_1y", "stop": "ma60",
+             "sell_timing": "60일 이동평균 아래로 마감하면 검토한다.",
+             "conditions": [{"name": "52주 위치", "met": False, "detail": "1년 범위의 10.9% 위치로 저점 쪽이다."},
+                            {"name": "단기 흐름", "met": True, "detail": "1개월 -4.2% 내렸다."}],
+             "summary": "고점과 거리가 멀고 단기 흐름이 약하다."}
+        a.update(kw)
+        return {"holdings": [{"key": "US-ORCL", "news": [], "filings": [], "rumors": [], "advice": a}]}
+
+    def test_valid_advice_kept(self):
+        out, w = summarizer.validate(self.advice(), self.payload(), {})
+        self.assertEqual(out["holding_advice"]["US-ORCL"]["target"], "hi_1y")
+        self.assertEqual(len(out["holding_advice"]["US-ORCL"]["conditions"]), 2)
+
+    def test_unknown_level_and_bad_view_and_banned(self):
+        out, w = summarizer.validate(self.advice(target="my_guess_400"), self.payload(), {})
+        self.assertIsNone(out["holding_advice"]["US-ORCL"]["target"])
+        out, w = summarizer.validate(self.advice(view="강력 매수"), self.payload(), {})
+        self.assertNotIn("US-ORCL", out["holding_advice"])
+        out, w = summarizer.validate(self.advice(summary="반드시 오른다."), self.payload(), {})
+        self.assertNotIn("US-ORCL", out["holding_advice"])
+        out, w = summarizer.validate(self.advice(summary="목표 999달러까지 간다."), self.payload(), {})   # 없는 숫자
+        self.assertNotIn("US-ORCL", out["holding_advice"])
+
+
 if __name__ == "__main__":
     unittest.main()
+
