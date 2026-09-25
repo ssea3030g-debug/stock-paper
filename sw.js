@@ -1,7 +1,11 @@
 // 아침증권신문 서비스 워커: 페이지는 네트워크 우선(오프라인이면 마지막으로 본 것), 아이콘은 캐시 우선
-var CACHE = "paper-v2";
+var CACHE = "paper-v3";
 self.addEventListener("install", function (e) { self.skipWaiting(); });
-self.addEventListener("activate", function (e) { e.waitUntil(self.clients.claim()); });
+self.addEventListener("activate", function (e) {
+  e.waitUntil(caches.keys().then(function (ks) {   // 예전 버전 캐시(종목·시세 응답이 남아 있을 수 있음) 삭제
+    return Promise.all(ks.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
+  }).then(function () { return self.clients.claim(); }));
+});
 self.addEventListener("fetch", function (e) {
   var req = e.request;
   var u = new URL(req.url);

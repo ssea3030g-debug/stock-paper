@@ -5,6 +5,7 @@
 const KEY = "list";
 const FIELDS = ["market", "code", "name", "query", "qty", "avg", "added_at"];
 const MAX_ITEMS = 100;
+const ID_RE = /^(?:(?:KR|US)-[A-Z0-9.\-]{1,20}|Q-[a-z0-9]{1,20})$/;   // 종목 문서만 (다른 키가 목록에 섞이지 않게)
 
 function json(data, init) {
   return new Response(JSON.stringify(data), Object.assign({ headers: { "content-type": "application/json" } }, init));
@@ -18,7 +19,7 @@ async function readList(env) {
   if (!raw) return [];
   try {
     const list = JSON.parse(raw);
-    return Array.isArray(list) ? list : [];
+    return Array.isArray(list) ? list.filter((x) => x && typeof x.id === "string" && ID_RE.test(x.id)) : [];
   } catch (e) {
     return [];
   }
@@ -57,7 +58,7 @@ export async function onRequestPut({ request, env }) {
   } catch (e) {
     return err(400, "bad_request");
   }
-  if (!body || typeof body.id !== "string" || !body.id || body.id.length > 64) return err(400, "bad_request");
+  if (!body || typeof body.id !== "string" || !ID_RE.test(body.id)) return err(400, "bad_request");
   const list = await readList(env);
   const data = Object.assign({ id: body.id }, sanitize(body.data));
   const i = list.findIndex((x) => x.id === body.id);
