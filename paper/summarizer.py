@@ -75,6 +75,8 @@ def build_payload(results: dict, market_status: dict, issue_date: str, cfg: dict
         "indicators": points("indicators"),
         "watchlist": points("watchlist"),
         "news": [{k: a.get(k) for k in ("id", "title", "source", "published", "description")} for a in news],
+        "disclosures": [{k: d.get(k) for k in ("corp", "market", "title", "date", "watch")}
+                        for d in (results.get("disclosures") or {}).get("items", [])[:10]],
         "calendar": [{k: e.get(k) for k in ("date", "time", "title", "region")}
                      for e in (results.get("calendar") or {}).get("items", [])],
     }

@@ -66,6 +66,8 @@ def collect(cfg: dict, ctx: Context) -> dict:
             log.warning("[%s] 알 수 없는 수집기 — 건너뜀", cid)
             continue
         log.info("[%s] 수집 시작", cid)
+        if cid == "disclosures":   # 관심 종목 공시를 우선 보여 주기 위해 목록을 함께 넘김
+            ccfg = {**ccfg, "watchlist": (cfg["collectors"].get("watchlist") or {}).get("stocks") or []}
         results[cid] = REGISTRY[cid](ccfg, ctx).run().to_dict()
     return results
 
@@ -106,7 +108,7 @@ def main(argv=None) -> int:
         if args.sample:
             from paper.fixture_http import FixtureHttp
             http = FixtureHttp()
-            env = {"KRX_API_KEY": "sample", "ECOS_API_KEY": "sample", "FRED_API_KEY": "sample",
+            env = {"KRX_API_KEY": "sample", "ECOS_API_KEY": "sample", "FRED_API_KEY": "sample", "DART_API_KEY": "sample",
                    "KIS_APP_KEY": "sample", "KIS_APP_SECRET": "sample"}
         else:
             http, env = HttpClient.from_config(cfg.get("http")), dict(os.environ)

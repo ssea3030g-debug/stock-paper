@@ -29,6 +29,7 @@ DEFAULT_ROUTES = [
     ("series/observations", {"series_id": "DCOILWTICO"}, "fred_wti.json"),
     ("series/observations", {"series_id": "DCOILBRENTEU"}, "fred_brent.json"),
     ("releases/dates", None, "fred_releases.json"),
+    ("opendart.fss.or.kr/api/list.json", None, "dart_list.json"),
     ("oauth2/tokenP", None, "kis_token.json"),
     ("inquire-investor", None, "kis_flows.json"),
     (".xml", None, "rss_sample.xml"),

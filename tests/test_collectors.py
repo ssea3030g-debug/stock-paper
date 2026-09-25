@@ -187,3 +187,44 @@ class YahooGapTest(unittest.TestCase):
         self.assertEqual(dp.extra["prev_missing"], "2026-09-22")
         dp2 = yahoo.last_close(http, "^KS11", "코스피", on_or_before=dt.date(2026, 9, 22))
         self.assertEqual(dp2.as_of, "2026-09-21")    # 종가 없는 날은 건너뛰고 직전 값
+
+
+class DisclosuresTest(unittest.TestCase):
+    def cfg(self, **kw):
+        return dict(CFG["disclosures"], **kw)
+
+    def test_filter_and_order(self):
+        cfg = self.cfg(watchlist=[{"name": "관심기업", "code": "555555", "market": "KOSPI"}])
+        r = REGISTRY["disclosures"](cfg, make_ctx()).run()
+        corps = [d["corp"] for d in r.items]
+        self.assertEqual(corps[0], "관심기업")                  # 관심 종목은 키워드 무관하게 맨 앞
+        self.assertIn("삼성전자", corps)                        # 잠정실적
+        self.assertIn("샘플전자", corps)                        # 자기주식
+        self.assertNotIn("샘플비상장", corps)                   # 시장(E) 제외
+        self.assertNotIn("샘플바이오", corps)                   # [기재정정] 제외
+        self.assertNotIn("샘플화학", corps)                     # 키워드 없음
+        sam = next(d for d in r.items if d["corp"] == "삼성전자")
+        self.assertEqual(sam["url"], "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260924800111")
+        self.assertEqual(sam["date"], "2026-09-24")
+        self.assertEqual(r.data["window"], ["2026-09-23", "2026-09-24"])   # 전 거래일 ~ 발행 전날
+
+    def test_errors(self):
+        r = REGISTRY["disclosures"](self.cfg(), make_ctx(env={})).run()
+        self.assertFalse(r.ok)
+        self.assertIn("DART_API_KEY", r.error)
+        bad = REGISTRY["disclosures"](self.cfg(), make_ctx(routes=[("list.json", None, "dart_badkey.json")])).run()
+        self.assertIn("010", bad.error)
+        empty = REGISTRY["disclosures"](self.cfg(), make_ctx(routes=[("list.json", None, "dart_empty.json")])).run()
+        self.assertTrue(empty.ok)
+        self.assertEqual(empty.items, [])
+
+
+class RedactTest(unittest.TestCase):
+    def test_api_key_hidden_in_errors(self):
+        import os
+        from unittest import mock
+        from paper.http import HttpClient
+        with mock.patch.dict(os.environ, {"FRED_API_KEY": "secret키1234"}):
+            h = HttpClient()
+        msg = "400 for url: https://x/?api_key=secret%ED%82%A41234 and /secret키1234/"
+        self.assertNotIn("secret", h.redact(msg))

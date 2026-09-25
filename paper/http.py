@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 import time
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from urllib.robotparser import RobotFileParser
 
 import requests
@@ -29,6 +30,14 @@ class HttpClient:
         self._last_hit: dict[str, float] = {}
         self._robots: dict[str, RobotFileParser | None] = {}
         self._lock = threading.Lock()
+        # 오류 메시지·로그에 API 키가 찍히지 않도록 가릴 값들
+        self._secrets = sorted({v for k, v in os.environ.items()
+                                if k.endswith(("_KEY", "_SECRET")) and len(v) >= 6}, key=len, reverse=True)
+
+    def redact(self, text: str) -> str:
+        for v in self._secrets:
+            text = text.replace(v, "***").replace(quote(v, safe=""), "***")
+        return text
 
     @classmethod
     def from_config(cls, cfg: dict) -> "HttpClient":
@@ -92,7 +101,7 @@ class HttpClient:
                     log.info("재시도 %d/%d (%s) %.0fs 후: %s", attempt, self.retries, host, delay, e)
                     time.sleep(delay)
         assert last_exc is not None
-        raise last_exc
+        raise type(last_exc)(self.redact(str(last_exc))) from None
 
     def get_json(self, url: str, **kw):
         return self.request("GET", url, **kw).json()

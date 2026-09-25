@@ -23,6 +23,7 @@ sections:
   - { id: indicators,   enabled: true, title: "주요 지표" }
   - { id: watchlist,    enabled: true, title: "관심 종목" }
   - { id: news,         enabled: true, title: "주요 뉴스", max_items: 8 }
+  - { id: disclosures,  enabled: true, title: "주요 공시", max_items: 8 }
   - { id: calendar,     enabled: true, title: "오늘의 일정", max_items: 10 }
   - { id: key_points,   enabled: true, title: "핵심 3줄" }
   - { id: disclaimer,   enabled: true }
@@ -107,6 +108,16 @@ collectors:
       - { monthday: 1, time: "09:00", title: "월간 수출입동향 발표 (산업통상자원부)", region: KR }
     manual_events: []        # 예) - { date: 2026-10-02, time: "08:00", title: "9월 소비자물가 발표 (통계청)" }
                              #     - { date: 2026-10-28, title: "FOMC 회의 (~29일)", region: US }
+
+  disclosures:               # 금융감독원 OpenDART (DART_API_KEY 필요)
+    enabled: true
+    types: [I]               # I 거래소공시(잠정실적·자사주 등), B 주요사항보고(증자·합병), A 정기공시
+    markets: [Y, K]          # Y 코스피, K 코스닥
+    keywords: ["잠정", "영업실적", "매출액또는손익구조", "유상증자", "무상증자", "자기주식", "합병", "분할", "공급계약", "현금ㆍ현물배당"]
+    exclude: ["[기재정정]"]
+    max_pages: 5             # 100건씩, 공시가 많은 날 조회량 상한
+    max_collect: 20
+    # 관심 종목(watchlist.stocks)의 공시는 키워드와 상관없이 맨 앞에 표시
 
 # ── 휴장일 ───────────────────────────────────────────────────
 market_calendar:            # 기본 휴장일 표: data/krx_holidays.yaml (매년 갱신)
