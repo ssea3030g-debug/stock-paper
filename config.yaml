@@ -174,8 +174,15 @@ summary:
 
 # ── 앱 ───────────────────────────────────────────────────────
 app:
-  refresh_trigger_id: trig_01JC7mGiGWiXWb8CnMJKrLzH   # 앱을 열 때 '내 종목' 갱신을 요청할 Claude 예약 작업
+  refresh_trigger_id: ""   # 사본은 원본 예약 작업을 부르지 않음 (앱을 열 때 갱신 없음)
   refresh_after_min: 30                               # 정보가 이보다 오래됐으면 열 때 갱신 요청
+
+# ── 설치형 웹앱 (Cloudflare Pages · APK) — scripts/build_site.py 가 사용
+site:
+  name: 아침증권신문
+  short_name: 아침증권
+  theme_color: "#17160f"
+  background_color: "#edeae2"
 
 # ── 출력 ─────────────────────────────────────────────────────
 output:

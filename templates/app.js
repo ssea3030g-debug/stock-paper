@@ -96,7 +96,7 @@
 
   function formHtml() {
     if (!db) {
-      return '<p class="msg">종목 추가·수정은 claude.ai에서 이 페이지를 열었을 때만 됩니다.</p>';
+      return '<p class="msg">이 화면에서는 종목을 추가·수정할 수 없습니다. 바꿀 종목은 Claude 채팅으로 알려 주세요.</p>';
     }
     return '<form class="box" id="addf" novalidate><h3>종목 추가</h3><div class="fgrid">' +
       '<label class="wide" for="f-q">종목 이름 또는 코드<input id="f-q" list="f-list" autocomplete="off" spellcheck="false" placeholder="삼성전자, 엔비디아, NVDA, 005930"></label>' +

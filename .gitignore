@@ -5,3 +5,4 @@ logs/
 output/data/
 output/artifact/
 .pytest_cache/
+site/
