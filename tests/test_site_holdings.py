@@ -47,6 +47,17 @@ class SiteHoldingsTest(unittest.TestCase):
         self.assertEqual(holdings, STOCKS)
         self.assertIn("https://x.pages.dev/api/holdings", m.call_args[0][0].full_url)
 
+    def test_unreachable_pages_url_falls_back_to_static(self):
+        from urllib.error import URLError
+        with tempfile.TemporaryDirectory() as t:
+            f = Path(t) / "data" / "site_holdings.json"
+            f.parent.mkdir()
+            f.write_text(json.dumps(STOCKS[:1]), encoding="utf-8")
+            with mock.patch.object(site_holdings, "ROOT", Path(t)), \
+                 mock.patch.object(site_holdings, "urlopen", side_effect=URLError("403")):
+                holdings, src = site_holdings.fetch({"site": {"pages_url": "https://x.pages.dev"}})
+        self.assertEqual((holdings, src), (STOCKS[:1], "static-fallback"))
+
 
 class NewHoldingsTest(unittest.TestCase):
     def test_no_page_treats_everything_as_new(self):

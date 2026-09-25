@@ -26,14 +26,19 @@ def fetch(cfg: dict) -> tuple[list, str]:
         try:
             with urlopen(req, timeout=15) as r:
                 data = json.loads(r.read().decode("utf-8"))
+            if not isinstance(data, list):
+                raise ValueError(f"응답이 배열이 아님: {type(data).__name__}")
+            return data, "cloudflare"
         except (URLError, TimeoutError, ValueError) as e:
-            raise SystemExit(f"{url}/api/holdings 조회 실패: {e}") from e
-        if not isinstance(data, list):
-            raise SystemExit(f"{url}/api/holdings 응답이 배열이 아닙니다: {type(data)}")
-        return data, "cloudflare"
+            # 네트워크 차단·KV 미연결이어도 신문 발행은 계속되도록 정적 목록으로 대신함
+            print(f"경고: {url}/api/holdings 조회 실패 ({e}) → data/site_holdings.json 사용", file=sys.stderr)
+            return static(), "static-fallback"
+    return static(), "static"
+
+
+def static() -> list:
     fallback = ROOT / "data" / "site_holdings.json"
-    holdings = json.loads(fallback.read_text(encoding="utf-8")) if fallback.exists() else []
-    return holdings, "static"
+    return json.loads(fallback.read_text(encoding="utf-8")) if fallback.exists() else []
 
 
 def main(argv=None) -> int:
