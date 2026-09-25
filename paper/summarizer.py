@@ -20,24 +20,34 @@ from . import fmt
 
 log = logging.getLogger("summarizer")
 
-RULES = """당신은 한국어 증권 신문의 편집 기자입니다. 아래 [데이터]만 근거로 기사를 씁니다.
+RULES = """당신은 한국어 증권 신문의 편집장입니다. 아래 [데이터]만 근거로 씁니다.
 
 반드시 지킬 규칙
 1. [데이터]에 없는 사실·수치·원인·전망을 만들어 내지 마세요. 원인이 데이터에 없으면 원인을 쓰지 마세요.
-2. 수치를 쓸 때는 [데이터]의 값을 그대로(반올림은 표시 자릿수까지만) 쓰고, 기준일을 헷갈리지 않게 쓰세요.
-3. value 가 null 인 항목은 "데이터 없음"이므로 언급하지 않거나 "확인되지 않았다"고만 쓰세요.
-4. 투자 권유·종목 추천·매수/매도 의견·목표가·수익 전망 표현을 쓰지 마세요. 사실 전달만 합니다.
-5. 뉴스 요약은 해당 기사의 제목과 본문 발췌(description)에 있는 내용만 씁니다.
+2. 수치는 [데이터]의 값을 그대로(반올림은 표시 자릿수까지만) 쓰고, 기준일을 헷갈리지 않게 쓰세요.
+3. value 가 null 인 항목은 "데이터 없음", change 가 null 이면 전일 대비 변동을 쓰지 마세요.
+4. 투자 권유·종목 추천·매수/매도 의견·목표가·수익 전망 표현 금지. 사실 전달만 합니다.
+5. 기사 요약은 그 기사의 title 과 description 에 있는 내용만 씁니다. 영어 기사는 한국어로 옮겨 씁니다.
 6. 휴장 정보(market_status)가 있으면 머리기사에서 국내 수치가 어느 거래일 기준인지 밝히세요.
 7. 문체: 신문 기사체(~했다, ~이다). 과장·감탄 없이 담담하게.
+
+고르는 기준
+- news: 후보 중 '시장 전체에 파장이 가장 큰' 기사 정확히 {news_items}개. 금리·물가·중앙은행, 전쟁·지정학, 대형 기업 실적·가이던스,
+  규제·정책, 대형 인수합병, 시장 급변 순으로 중요. 생활·부동산 일반·칼럼·광고성·종목 추천 기사는 고르지 마세요.
+- holdings: 종목마다 그 회사 주가에 직접 영향을 줄 기사 최대 {holding_news}개(실적·가이던스·대형 계약·규제·소송·경영진·제품 발표 우선,
+  단순 시세 해설·'살까 말까' 류 기사는 제외). 적당한 기사가 없으면 빈 배열.
+- rumors: 찌라시·풍문 후보(reports 의 rid, filings 의 rid) 중 파장이 큰 것 최대 {rumor_items}개.
+  status 는 데이터로만 판단: 해명 공시가 부인하면 "회사 부인", 검토 중·미확정이라고 하면 "회사 확인·검토 중", 그 밖엔 "미확인".
+  summary 는 '무슨 소문(보도)인지'를 한두 문장으로. 사실처럼 단정하지 말고 '~라는 보도', '~설' 형태로 쓰세요.
 
 출력 형식 (JSON 하나만 출력)
 {
   "headline": {"title": "머리기사 제목 (30자 이내)", "body": "머리기사 한 단락 (3~5문장)"},
-  "news": [{"id": "n1", "summary": "기사 요약 2~3문장"}],
+  "news": [{"id": "n1", "summary": "2~3문장"}],
+  "holdings": [{"key": "US-NVDA", "news": [{"id": "US-NVDA-n1", "summary": "2문장"}]}],
+  "rumors": [{"id": "r1", "summary": "1~2문장", "status": "미확인"}],
   "key_points": ["핵심 1", "핵심 2", "핵심 3"]
 }
-- news 는 [데이터]의 news 에서 중요한 기사를 최대 {news_items}개 골라 id 를 그대로 씁니다.
 - key_points 는 정확히 {key_points}개, 각 60자 이내.
 """
 
@@ -49,9 +59,19 @@ SCHEMA = {
         "news": {"type": "array", "items": {"type": "object", "properties": {
             "id": {"type": "string"}, "summary": {"type": "string"}},
             "required": ["id", "summary"], "additionalProperties": False}},
+        "holdings": {"type": "array", "items": {"type": "object", "properties": {
+            "key": {"type": "string"},
+            "news": {"type": "array", "items": {"type": "object", "properties": {
+                "id": {"type": "string"}, "summary": {"type": "string"}},
+                "required": ["id", "summary"], "additionalProperties": False}}},
+            "required": ["key", "news"], "additionalProperties": False}},
+        "rumors": {"type": "array", "items": {"type": "object", "properties": {
+            "id": {"type": "string"}, "summary": {"type": "string"},
+            "status": {"type": "string", "enum": ["미확인", "회사 부인", "회사 확인·검토 중"]}},
+            "required": ["id", "summary", "status"], "additionalProperties": False}},
         "key_points": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["headline", "news", "key_points"],
+    "required": ["headline", "news", "holdings", "rumors", "key_points"],
     "additionalProperties": False,
 }
 
@@ -65,7 +85,15 @@ def build_payload(results: dict, market_status: dict, issue_date: str, cfg: dict
         return [{k: i.get(k) for k in ("name", "value", "unit", "change", "change_pct", "as_of", "source")}
                 for i in r["items"]]
 
-    news = results.get("news", {}).get("items", [])[: max(cfg.get("news_items", 6) * 2, 10)]
+    news = results.get("news", {}).get("items", [])[:40]
+    cut = lambda a, n=300: {**{k: a.get(k) for k in ("id", "title", "source", "published")},
+                            "description": (a.get("description") or "")[:n]}
+    holdings = [{"key": h["key"], "name": h["name"], "market": h["market"],
+                 "price": h.get("price") and {k: h["price"].get(k) for k in ("value", "change", "change_pct", "as_of")},
+                 "earnings": h.get("earnings"), "filings": h.get("filings"),
+                 "news": [cut(a) for a in h.get("news", [])]}
+                for h in (results.get("holdings") or {}).get("items", [])]
+    rum = results.get("rumors") or {}
     return {
         "issue_date": issue_date,
         "market_status": market_status,
@@ -74,7 +102,11 @@ def build_payload(results: dict, market_status: dict, issue_date: str, cfg: dict
         "us_market": points("us_market"),
         "indicators": points("indicators"),
         "watchlist": points("watchlist"),
-        "news": [{k: a.get(k) for k in ("id", "title", "source", "published", "description")} for a in news],
+        "news": [cut(a, 250) for a in news],
+        "holdings": holdings,
+        "rumors": {"reports": [{**cut(r, 200), "rid": r.get("rid")} for r in rum.get("items", [])],
+                   "filings": [{k: f.get(k) for k in ("rid", "corp", "title", "date", "kind", "detail")}
+                               for f in (rum.get("data") or {}).get("filings", [])]},
         "disclosures": [{k: d.get(k) for k in ("corp", "market", "title", "date", "watch")}
                         for d in (results.get("disclosures") or {}).get("items", [])[:10]],
         "calendar": [{k: e.get(k) for k in ("date", "time", "title", "region")}
@@ -83,7 +115,9 @@ def build_payload(results: dict, market_status: dict, issue_date: str, cfg: dict
 
 
 def build_prompt(payload: dict, cfg: dict) -> str:
-    rules = RULES.replace("{news_items}", str(cfg.get("news_items", 6))).replace("{key_points}", str(cfg.get("key_points", 3)))
+    rules = RULES
+    for k, d in (("news_items", 3), ("key_points", 3), ("holding_news", 3), ("rumor_items", 5)):
+        rules = rules.replace("{" + k + "}", str(cfg.get(k, d)))
     return f"{rules}\n[데이터]\n```json\n{json.dumps(payload, ensure_ascii=False, indent=1)}\n```\n"
 
 
@@ -139,6 +173,29 @@ def validate(summary: dict, payload: dict, cfg: dict) -> tuple[dict, list[str]]:
             warnings.append(f"뉴스 id {n.get('id')} 없음 → 제외"); continue
         if ok_text(f"뉴스 {n['id']}", n.get("summary")):
             out["news"][n["id"]] = n["summary"].strip()
+    out["news"] = dict(list(out["news"].items())[: cfg.get("news_items", 3)])
+
+    hids = {h["key"]: {a["id"] for a in h.get("news", [])} for h in payload.get("holdings", [])}
+    out["holdings"] = {}
+    for hk in summary.get("holdings") or []:
+        k = hk.get("key")
+        if k not in hids:
+            warnings.append(f"내 종목 {k} 없음 → 제외"); continue
+        picked = [{"id": n["id"], "summary": n["summary"].strip()} for n in hk.get("news") or []
+                  if n.get("id") in hids[k] and ok_text(f"{k} {n.get('id')}", n.get("summary"))]
+        out["holdings"][k] = picked[: cfg.get("holding_news", 3)]
+
+    rum = payload.get("rumors") or {}
+    rids = {r["rid"] for r in rum.get("reports", [])} | {f["rid"] for f in rum.get("filings", [])}
+    out["rumors"] = []
+    for r in summary.get("rumors") or []:
+        if r.get("id") not in rids:
+            warnings.append(f"찌라시 id {r.get('id')} 없음 → 제외"); continue
+        status = r.get("status") if r.get("status") in ("미확인", "회사 부인", "회사 확인·검토 중") else "미확인"
+        if ok_text(f"찌라시 {r['id']}", r.get("summary")):
+            out["rumors"].append({"id": r["id"], "summary": r["summary"].strip(), "status": status})
+    out["rumors"] = out["rumors"][: cfg.get("rumor_items", 5)]
+
     kps = [k.strip() for i, k in enumerate(summary.get("key_points") or []) if ok_text(f"핵심 {i+1}", k)]
     if len(kps) >= cfg.get("key_points", 3):
         out["key_points"] = kps[: cfg.get("key_points", 3)]
@@ -192,7 +249,7 @@ def extractive(payload: dict, cfg: dict) -> dict:
     while len(kps) < cfg.get("key_points", 3):
         kps.append("데이터 없음")
     # 기사별 요약은 비워 두면 지면에서 기사 첫 문장을 사용한다
-    return {"headline": headline, "news": {}, "key_points": kps[: cfg.get("key_points", 3)]}
+    return {"headline": headline, "news": {}, "holdings": {}, "rumors": [], "key_points": kps[: cfg.get("key_points", 3)]}
 
 
 # ── API ────────────────────────────────────────────────────────
@@ -237,6 +294,6 @@ def summarize(payload: dict, cfg: dict, summary_file: Path | None = None) -> dic
         clean, warnings = validate(raw, payload, cfg)
         for w in warnings:
             log.warning("요약 검증: %s", w)
-        result.update({k: v for k, v in clean.items() if v})
+        result.update({k: v for k, v in clean.items() if v or k in ("holdings", "rumors")})
         result["provider"], result["warnings"] = used, warnings
     return result

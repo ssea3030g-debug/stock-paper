@@ -16,7 +16,7 @@ CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=1mo&i
 QUOTE_PAGE = "https://finance.yahoo.com/quote/{sym}"
 
 
-def daily_closes(http: HttpClient, symbol: str) -> tuple[list[tuple[dt.date, float | None]], str]:
+def daily_closes(http: HttpClient, symbol: str, meta_out: dict | None = None) -> tuple[list[tuple[dt.date, float | None]], str]:
     """[(현지 거래일, 종가)] 오래된 순, 거래소 시간대 이름.
     Yahoo 는 거래일인데 종가가 비어 있는 행(None)을 보내기도 한다 — 버리지 않고 그대로 둔다."""
     data = http.get_json(CHART_URL.format(sym=quote(symbol, safe="")))
@@ -25,6 +25,8 @@ def daily_closes(http: HttpClient, symbol: str) -> tuple[list[tuple[dt.date, flo
         err = (data.get("chart") or {}).get("error")
         raise ValueError(f"Yahoo 응답 없음: {symbol} {err}")
     r = res[0]
+    if meta_out is not None:
+        meta_out.update(r.get("meta") or {})
     tzname = r["meta"].get("exchangeTimezoneName", "UTC")
     tz = ZoneInfo(tzname)
     closes = r["indicators"]["quote"][0]["close"]
@@ -36,8 +38,9 @@ def daily_closes(http: HttpClient, symbol: str) -> tuple[list[tuple[dt.date, flo
 
 def last_close(http: HttpClient, symbol: str, name: str, *, on_or_before: dt.date,
                unit: str = "", close_label: str = "") -> DataPoint:
-    """on_or_before 이하 마지막 거래일 종가와 전일 대비."""
-    rows, tzname = daily_closes(http, symbol)
+    """on_or_before 이하 마지막 거래일 종가와 전일 대비. extra 에 52주 고저·종목명·통화도 담는다."""
+    meta: dict = {}
+    rows, tzname = daily_closes(http, symbol, meta)
     rows = [r for r in rows if r[0] <= on_or_before]
     valid = [i for i, r in enumerate(rows) if r[1] is not None]
     if not valid:
@@ -52,6 +55,8 @@ def last_close(http: HttpClient, symbol: str, name: str, *, on_or_before: dt.dat
         change_pct=(change / prev * 100) if prev else None,
         as_of=f"{d.isoformat()}{(' ' + close_label) if close_label else ''}",
         source="Yahoo Finance", source_url=QUOTE_PAGE.format(sym=quote(symbol, safe="=")),
-        extra={"symbol": symbol, "tz": tzname,
+        extra={"symbol": symbol, "tz": tzname, "currency": meta.get("currency"),
+               "long_name": meta.get("longName") or meta.get("shortName"),
+               "high52": meta.get("fiftyTwoWeekHigh"), "low52": meta.get("fiftyTwoWeekLow"),
                **({"prev_missing": rows[last - 1][0].isoformat()} if last > 0 and prev is None else {})},
     )

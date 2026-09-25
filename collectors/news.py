@@ -90,9 +90,12 @@ class NewsCollector(BaseCollector):
         articles, errors, sources = [], [], []
         for feed in self.cfg.get("feeds", []):
             try:
-                r = self.ctx.http.request("GET", feed["url"], check_robots=True)
-                entries = parse_feed(r.content)
-                sources.append({"name": feed["name"], "url": feed["url"]})
+                if feed.get("type") == "finnhub":
+                    entries = self._finnhub(feed)
+                else:
+                    r = self.ctx.http.request("GET", feed["url"], check_robots=True)
+                    entries = parse_feed(r.content)
+                sources.append({"name": feed["name"], "url": feed.get("public_url", feed["url"])})
             except Exception as e:  # noqa: BLE001
                 errors.append(f"{feed['name']}: {e}")
                 self.log.warning("피드 실패 %s: %s", feed["name"], e)
@@ -109,7 +112,8 @@ class NewsCollector(BaseCollector):
                 if any(k in hay for k in exc):
                     continue
                 articles.append({
-                    "title": title, "url": e.get("link", ""), "source": feed["name"],
+                    "title": title, "url": e.get("link", ""),
+                    "source": f"{e['author']} (Finnhub)" if feed.get("type") == "finnhub" and e.get("author") else feed["name"],
                     "published": published.astimezone(KST).isoformat(timespec="minutes"),
                     "first_sentence": first_sentence(body) if body else "",
                     "description": body[:600],
@@ -125,6 +129,19 @@ class NewsCollector(BaseCollector):
         return SectionResult(id=self.id, ok=bool(sources), items=articles[:limit],
                              data={"window": [start.isoformat(timespec="minutes"), end.isoformat(timespec="minutes")]},
                              error="; ".join(errors) or None, sources=sources)
+
+    def _finnhub(self, feed) -> list[dict]:
+        """Finnhub 시장 뉴스(영문) → RSS 항목과 같은 모양으로."""
+        key = self.key("FINNHUB_API_KEY")
+        if not key:
+            raise RuntimeError("FINNHUB_API_KEY 없음")
+        data = self.ctx.http.get_json(feed["url"], params={"category": feed.get("category", "general"), "token": key})
+        out = []
+        for a in data if isinstance(data, list) else []:
+            ts = dt.datetime.fromtimestamp(a.get("datetime", 0), dt.timezone.utc)
+            out.append({"title": a.get("headline", ""), "link": a.get("url", ""), "description": a.get("summary", ""),
+                        "date": ts.isoformat(), "author": a.get("source", "")})
+        return out
 
     @staticmethod
     def _dedupe(articles: list[dict], threshold: float = 0.8) -> list[dict]:

@@ -56,7 +56,7 @@ def setup_logging(cfg: dict, issue: dt.date, write_file: bool) -> None:
                         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s")
 
 
-def collect(cfg: dict, ctx: Context) -> dict:
+def collect(cfg: dict, ctx: Context, holdings: list | None = None) -> dict:
     results = {}
     for cid, ccfg in (cfg.get("collectors") or {}).items():
         if not (ccfg or {}).get("enabled", True):
@@ -66,8 +66,14 @@ def collect(cfg: dict, ctx: Context) -> dict:
             log.warning("[%s] 알 수 없는 수집기 — 건너뜀", cid)
             continue
         log.info("[%s] 수집 시작", cid)
-        if cid == "disclosures":   # 관심 종목 공시를 우선 보여 주기 위해 목록을 함께 넘김
-            ccfg = {**ccfg, "watchlist": (cfg["collectors"].get("watchlist") or {}).get("stocks") or []}
+        pool = (results.get("news") or {}).get("items") or []
+        if cid == "disclosures":   # 내 종목 공시를 우선 보여 주기 위해 목록을 함께 넘김
+            ccfg = {**ccfg, "watchlist": [{"code": h["code"], "market": "KOSPI"} for h in holdings or []
+                                          if str(h.get("market", "")).upper() == "KR"]}
+        elif cid == "holdings":
+            ccfg = {**ccfg, "items": holdings or [], "news_pool": pool}
+        elif cid == "rumors":
+            ccfg = {**ccfg, "news_pool": pool}
         results[cid] = REGISTRY[cid](ccfg, ctx).run().to_dict()
     return results
 
@@ -82,6 +88,7 @@ def main(argv=None) -> int:
     g.add_argument("--render-only", action="store_true", help="저장된 수집 결과로 요약·HTML 만")
     ap.add_argument("--sample", action="store_true", help="샘플 응답으로 실행 (지면 미리보기)")
     ap.add_argument("--out", help="출력 폴더 (기본: config output.dir)")
+    ap.add_argument("--holdings", help="내 종목 목록 JSON 파일 (앱 저장소에서 내려받은 것). 기본: output/data/holdings.json")
     ap.add_argument("--archive", default="", help="지난 호 날짜 목록(쉼표 구분) — 출력 폴더에 없는 과거 호를 링크에 포함")
     args = ap.parse_args(argv)
 
@@ -108,13 +115,22 @@ def main(argv=None) -> int:
         if args.sample:
             from paper.fixture_http import FixtureHttp
             http = FixtureHttp()
-            env = {"KRX_API_KEY": "sample", "ECOS_API_KEY": "sample", "FRED_API_KEY": "sample", "DART_API_KEY": "sample",
+            env = {"KRX_API_KEY": "sample", "ECOS_API_KEY": "sample", "FRED_API_KEY": "sample", "DART_API_KEY": "sample", "FINNHUB_API_KEY": "sample",
                    "KIS_APP_KEY": "sample", "KIS_APP_SECRET": "sample"}
         else:
             http, env = HttpClient.from_config(cfg.get("http")), dict(os.environ)
         ctx = Context(issue_date=issue, http=http, calendar=calendar, env=env)
-        results = collect(cfg, ctx)
-        bundle = {"issue_date": issue.isoformat(), "sample": args.sample, "market_status": status,
+        hp = Path(args.holdings) if args.holdings else data_dir / "holdings.json"
+        holdings = []
+        if args.sample:
+            holdings = [{"market": "KR", "code": "005930", "name": "삼성전자", "qty": 10, "avg": 3000},
+                        {"market": "US", "code": "NVDA", "name": "엔비디아", "qty": 5, "avg": 150}]
+        elif hp.exists():
+            raw = json.loads(hp.read_text(encoding="utf-8"))
+            holdings = raw.get("holdings", raw) if isinstance(raw, dict) else raw
+        log.info("내 종목 %d개", len(holdings))
+        results = collect(cfg, ctx, holdings)
+        bundle = {"issue_date": issue.isoformat(), "sample": args.sample, "market_status": status, "holdings": holdings,
                   "collected_at": dt.datetime.now(KST).isoformat(timespec="seconds"), "results": results}
 
     scfg = cfg.get("summary", {})

@@ -166,12 +166,84 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
 .archive ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
 .archive a{display:inline-block;font:500 12.5px/1 var(--f-sans);font-variant-numeric:tabular-nums;border:1px solid var(--hair);padding:7px 9px;text-decoration:none}
 .archive a[aria-current]{border-color:var(--rule);background:var(--ink);color:var(--paper)}
+
+/* ── 탭 ───────────────────────────── */
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:grid;grid-template-columns:1fr 1fr;
+  border-bottom:1px solid var(--rule);margin-inline:-16px;padding-inline:16px}
+.tabs button{appearance:none;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);
+  font:700 15px/1 var(--f-serif);padding:13px 0 10px;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.tabs button:focus-visible{outline:2px solid var(--ink);outline-offset:-4px}
+
+/* ── 찌라시 ───────────────────────── */
+.rumor{list-style:none;margin:0;padding:0}
+.rumor li{padding:10px 0;border-bottom:1px dashed var(--hair)}
+.rumor li:last-child{border-bottom:0}
+.rumor .st{display:inline-block;font:700 10.5px/1 var(--f-sans);padding:3px 5px;margin-right:6px;border:1px solid currentColor;vertical-align:2px}
+.rumor .st.u{color:var(--stamp)} .rumor .st.d{color:var(--down)} .rumor .st.c{color:var(--ink)}
+.rumor h3{display:inline;font:700 15.5px/1.5 var(--f-serif);word-break:keep-all}
+.rumor p{margin:4px 0 0;font:400 14px/1.65 var(--f-sans);color:var(--ink-2);word-break:keep-all}
+.rumor .m{display:block;margin-top:3px;font:500 11.5px/1.4 var(--f-sans);color:var(--muted)}
+.warnline{font:500 11.5px/1.5 var(--f-sans);color:var(--stamp);margin:0 0 8px}
+@media (min-width:900px){ .s-rumors,.s-holdings{grid-column:span 6} }
+
+/* ── 내 종목 앱 ────────────────────── */
+.app{padding-block:14px 30px;display:grid;gap:18px;max-width:760px;margin-inline:auto}
+.app h2{font:900 24px/1.2 var(--f-serif);margin:0;letter-spacing:-.02em}
+.app .sub{font:400 12.5px/1.5 var(--f-sans);color:var(--muted);margin:4px 0 0}
+.plist{list-style:none;margin:0;padding:0;border-top:2px solid var(--rule)}
+.plist li{border-bottom:1px solid var(--hair)}
+.plist button.row{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 2px;cursor:pointer}
+.plist button.row:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.plist .nm{font:700 16px/1.3 var(--f-serif)}
+.plist .nm small{font:500 11px/1 var(--f-sans);color:var(--muted);margin-left:6px}
+.plist .px{font:600 16px/1.3 var(--f-sans);font-variant-numeric:tabular-nums;text-align:right}
+.plist .l2{font:400 12px/1.4 var(--f-sans);color:var(--muted);font-variant-numeric:tabular-nums}
+.plist .l2.r{text-align:right}
+.plist .up,.kv .up,.dhead .up{color:var(--up)} .plist .down,.kv .down,.dhead .down{color:var(--down)}
+.box{border:1px solid var(--rule);padding:14px;display:grid;gap:10px;background:var(--paper)}
+.box h3{margin:0;font:700 15px/1.3 var(--f-serif)}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fgrid label{display:grid;gap:4px;font:500 12px/1.3 var(--f-sans);color:var(--ink-2)}
+.fgrid .wide{grid-column:1 / -1}
+.app input,.app select{font:500 16px/1.2 var(--f-sans);padding:10px;border:1px solid var(--hair);background:var(--paper-2);color:var(--ink);border-radius:0;width:100%;min-width:0}
+.app input:focus,.app select:focus{outline:2px solid var(--ink);outline-offset:-1px}
+.btn{appearance:none;font:700 14px/1 var(--f-sans);padding:12px 14px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer}
+.btn.ghost{background:none;color:var(--ink)}
+.btn.danger{background:none;color:var(--stamp);border-color:var(--stamp)}
+.btn:focus-visible{outline:2px solid var(--stamp);outline-offset:2px}
+.msg{font:500 12.5px/1.5 var(--f-sans);color:var(--ink-2);margin:0}
+.msg.err{color:var(--stamp)}
+.dhead{display:grid;gap:4px;border-bottom:3px double var(--rule);padding-bottom:12px}
+.dhead .t{font:900 28px/1.15 var(--f-serif);letter-spacing:-.02em}
+.dhead .t small{font:500 12px/1 var(--f-sans);color:var(--muted);margin-left:8px;letter-spacing:0}
+.dhead .p{font:600 32px/1.1 var(--f-sans);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.dhead .c{font:500 14px/1.3 var(--f-sans);font-variant-numeric:tabular-nums}
+.kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--hair);border:1px solid var(--hair)}
+.kv div{background:var(--paper);padding:9px 10px}
+.kv b{display:block;font:500 11px/1.3 var(--f-sans);color:var(--muted)}
+.kv span{font:600 15px/1.35 var(--f-sans);font-variant-numeric:tabular-nums}
+.range{height:6px;background:var(--hair);position:relative;margin:8px 0 4px}
+.range i{position:absolute;top:-4px;width:3px;height:14px;background:var(--ink)}
+.rl{display:flex;justify-content:space-between;font:400 11.5px/1.3 var(--f-sans);color:var(--muted);font-variant-numeric:tabular-nums}
+.dsec h4{font:700 16px/1.3 var(--f-serif);margin:0 0 8px;padding-bottom:4px;border-bottom:2px solid var(--rule)}
+.dsec table{width:100%;border-collapse:collapse;font:400 13.5px/1.35 var(--f-sans);font-variant-numeric:tabular-nums}
+.dsec th{font:500 11px/1.2 var(--f-sans);color:var(--muted);text-align:right;padding:4px;border-bottom:1px solid var(--rule)}
+.dsec td{text-align:right;padding:8px 4px;border-bottom:1px solid var(--hair)}
+.dsec th:first-child,.dsec td:first-child{text-align:left}
+.next{font:600 15px/1.5 var(--f-sans)}
+.next small{display:block;font:400 12.5px/1.5 var(--f-sans);color:var(--muted)}
 @media (prefers-reduced-motion: no-preference){ a{transition:text-decoration-color .15s} }
 </style>
 </head>
 <body>
 <div class="sheet">
 
+<nav class="tabs" role="tablist" aria-label="보기">
+  <button type="button" role="tab" id="t-paper" aria-controls="v-paper" aria-selected="true">오늘 신문</button>
+  <button type="button" role="tab" id="t-mine" aria-controls="v-mine" aria-selected="false">내 종목</button>
+</nav>
+<div id="v-paper" role="tabpanel" aria-labelledby="t-paper">
 <header class="mast">
   <div class="ear" aria-label="발행 정보">
     <b>발행</b>2026년 9월 25일 금요일<br>제1호 · 오전 7시 발행
@@ -304,47 +376,43 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
   </div>
   <p class="src">출처: <a href="https://ecos.bok.or.kr/#/SearchStat" target="_blank" rel="noopener">한국은행 ECOS</a> · <a href="https://finance.yahoo.com/quote/CL=F" target="_blank" rel="noopener">Yahoo Finance</a></p>
 </section>
-<section class="sec s-watchlist" aria-label="관심 종목">
-  <div class="kicker"><h2>관심 종목</h2><span class="unit">종가 · 전일 대비</span></div><p class="note">config.yaml 의 watchlist.stocks 에 종목을 추가하세요.</p>
-  
+<section class="sec s-holdings" aria-label="내 종목">
+  <div class="kicker"><h2>내 종목</h2><span class="unit">종가 · 전일 대비</span></div>
+  <p class="nodata">위쪽 ‘내 종목’ 탭에서 보유 종목을 추가하면 다음 아침 신문부터 여기에 나옵니다.</p>
 </section>
-<section class="sec s-news" aria-label="주요 뉴스">
-  <div class="kicker"><h2>주요 뉴스</h2><span class="unit">최근 24시간</span></div>
+<section class="sec s-news" aria-label="오늘의 큰 뉴스 3">
+  <div class="kicker"><h2>오늘의 큰 뉴스 3</h2><span class="unit">최근 24시간 · 시장 파장 순</span></div>
   <div class="news">
     <article class="art lead">
       <div class="meta">한국경제 증권 · 9/25 06:31</div>
       <h3><a href="https://www.hankyung.com/article/202609255458i" target="_blank" rel="noopener">10년물 5.2% 돌파…美 증시 덮친 &#39;고금리 장기화&#39; [뉴욕증시 브리핑]</a></h3><p>미국 국채 10년물 금리가 5.2%를 돌파했다는 뉴욕증시 브리핑이다. 기사는 &#39;고금리 장기화&#39; 우려가 미국 증시를 덮쳤다고 제목에서 전했다.</p>
     </article>
     <article class="art">
-      <div class="meta">연합뉴스 경제 · 9/25 06:01</div>
-      <h3><a href="https://www.yna.co.kr/view/AKR20260923199400002" target="_blank" rel="noopener">소득 다 털어도 빚 갚기 빠듯한 차주 3년 반 만에 반등</a></h3><p>연간 소득 이상의 돈을 대출 원리금 상환에 써야 하는 가계대출 차주의 비중이 3년 반 만에 상승했다.</p>
+      <div class="meta">Reuters (Finnhub) · 9/25 01:18</div>
+      <h3><a href="https://news.google.com/rss/articles/CBMiwgFBVV95cUxNYXMwQlBmRVM4WXVFeXhQVkcyYnpaUzE3dk1wUWswS3pZWDBKTGNWVEpqdFNsWXZEYm5PQ3pSVmRhVFl1empQN3p6SFY0YTVHRmxxNWpxbXFNWVlCOEF5T0tBLVp0MzNyWVlyQnpkbUtyVzNTeGtxQXZVc3hhb0E4aVV6bU5QVEdHMFhCaXRhV3hxQVJ3MWRXNF9tNG5EeUVzcTdEOUhGSExiS3F2SUlkS2xzRk1mNlg4bkRhR0FoaE5QZw?oc=5" target="_blank" rel="noopener">US and Iran discuss phased deal to reopen Hormuz and end US blockade, sources say - Reuters</a></h3><p>로이터는 소식통을 인용해 미국과 이란이 호르무즈 해협 재개방과 미국의 봉쇄 해제를 위한 단계적 합의를 논의하고 있다고 보도했다.</p>
     </article>
     <article class="art">
-      <div class="meta">한국경제 증권 · 9/25 00:57</div>
-      <h3><a href="https://www.hankyung.com/article/202609255349i" target="_blank" rel="noopener">5.45%까지 오른 美 30년 국채…왜 이렇게 빠르게 상승하나 [Fed 워치]</a></h3><p>미국 30년 만기 국채 금리가 5.45%까지 올랐다. 기사는 금리가 빠르게 오르는 이유를 다룬다.</p>
-    </article>
-    <article class="art">
-      <div class="meta">한국경제 증권 · 9/24 22:24</div>
-      <h3><a href="https://www.hankyung.com/article/202609245297i" target="_blank" rel="noopener">유가 뛰자 채권·주식 동반 충격…개장 전 밀린 나스닥 선물[뉴욕증시 브리핑]</a></h3><p>유가가 뛰면서 채권과 주식이 동반 충격을 받았다는 뉴욕증시 브리핑이다. 개장 전 나스닥 선물이 밀렸다고 제목에서 전했다.</p>
-    </article>
-    <article class="art">
-      <div class="meta">연합뉴스 경제 · 9/24 18:09</div>
-      <h3><a href="https://www.yna.co.kr/view/AKR20260924045200083" target="_blank" rel="noopener">이란전쟁 초반 수준으로 되돌아간 中 국내유가…7월보다 22%↑</a></h3><p>중동 정세 긴장이 이어지면서 중국 국내 유가가 이란 전쟁 발발 직후 수준으로 다시 올랐다. 제목에 따르면 7월보다 22% 높은 수준이다.</p>
-    </article>
-    <article class="art">
-      <div class="meta">매일경제 증권 · 9/24 18:03</div>
-      <h3><a href="https://www.mk.co.kr/news/stock/12160968" target="_blank" rel="noopener">&#34;AI 속도 조절론은 기우 … 반도체 중심 상승세 계속&#34;</a></h3><p>주요 증권사 리서치센터장들은 추석 연휴 이후 국내외 증시가 단기 불확실성을 소화한 뒤 4분기 반등을 시도할 것으로 전망했다. 고금리 장기화 우려와 중동 지정학적 리스크도 함께 언급됐다.</p>
-    </article>
-    <article class="art">
-      <div class="meta">연합뉴스 경제 · 9/25 05:58</div>
-      <h3><a href="https://www.yna.co.kr/view/AKR20260924044300001" target="_blank" rel="noopener">주금공 대위변제 3년새 138%↑…&#34;전세대출 못 갚는 서민 늘어&#34;</a></h3><p>(서울=연합뉴스) 권희원 기자 = 전세자금 대출을 제때 갚지 못해 한국주택금융공사가 금융기관에 대신 갚아준 대위변제액이 3년간 배 이상 급증한 ...</p>
-    </article>
-    <article class="art">
-      <div class="meta">연합뉴스 경제 · 9/25 05:51</div>
-      <h3><a href="https://www.yna.co.kr/view/AKR20260923192900002" target="_blank" rel="noopener">작년 추석 휴게소서 한명당 1만8천원 소비…심야 매출 4배 &#39;쑥&#39;</a></h3><p>(서울=연합뉴스) 김지연 기자 = 지난해 추석 연휴 기간 고속도로 휴게소에서 1인당 약 1만8천원을 쓴 것으로 나타났다.</p>
+      <div class="meta">Reuters (Finnhub) · 9/25 05:33</div>
+      <h3><a href="https://news.google.com/rss/articles/CBMivAFBVV95cUxQLW1IRmRaem1xSHEwTjd1VldSMmNqZk55VmdmZkh4QnNhU21SM0ZtWGg4RDdxSkNOM1F6ZUJ4LUYybUlzcWx6S01zbzd5N3BRSWRTc0N6eExNa2RFQXVTYlM3RmtXOFlDUk1Yc2Q0LXNkTEFPQlpCNjgzZHNlbkZXWGtXT1NRNFZ3a2lvWWNxVkk1Rng0Q2ZtNUk4TzZ0YXpNdDFaRUZQa2lBVHpnV05pV1QtZVlJSjJpTFFPTA?oc=5" target="_blank" rel="noopener">Saudi Arabia says it intercepted Houthi missiles; group claims strikes on Riyadh, Aramco - Reuters</a></h3><p>사우디아라비아는 후티 반군의 미사일을 요격했다고 밝혔다. 후티 측은 리야드와 아람코 시설을 공격했다고 주장했다.</p>
     </article>
   </div>
-  <p class="src">출처: <a href="https://www.yna.co.kr/rss/economy.xml" target="_blank" rel="noopener">연합뉴스 경제</a> · <a href="https://www.hankyung.com/feed/finance" target="_blank" rel="noopener">한국경제 증권</a> · <a href="https://www.mk.co.kr/rss/50200011/" target="_blank" rel="noopener">매일경제 증권</a></p>
+  <p class="src">출처: <a href="https://www.yna.co.kr/rss/economy.xml" target="_blank" rel="noopener">연합뉴스 경제</a> · <a href="https://www.hankyung.com/feed/finance" target="_blank" rel="noopener">한국경제 증권</a> · <a href="https://www.mk.co.kr/rss/50200011/" target="_blank" rel="noopener">매일경제 증권</a> · <a href="https://finnhub.io/" target="_blank" rel="noopener">미국 시장 뉴스</a></p>
+</section>
+<section class="sec s-rumors" aria-label="찌라시·풍문 레이더">
+  <div class="kicker"><h2>찌라시·풍문 레이더</h2><span class="unit">미확인 보도 · 풍문 해명 공시</span></div>
+  <p class="warnline">사실로 확인되지 않은 이야기입니다. 원문과 회사 공시로 직접 확인하세요.</p>
+  <ul class="rumor">
+    <li><span class="st c">회사 확인·검토 중</span><h3><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260923800547" target="_blank" rel="noopener">미래에셋증권 — 풍문또는보도에대한해명(미확정)</a></h3><p>미래에셋증권·토스가 일본 증권사를 인수한다는 한국경제 보도에 대해, 미래에셋증권은 일본 리테일 시장 진출을 위해 현지 증권사 인수를 검토 중이나 확정된 사항은 없다고 재공시했다.</p>
+      <span class="m">미래에셋증권 공시 · 2026-09-23</span></li>
+    <li><span class="st c">회사 확인·검토 중</span><h3><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260923800537" target="_blank" rel="noopener">비비안 — 풍문또는보도에대한해명(미확정)</a></h3><p>비비안이 용산 사옥·부산 광복동 부동산 매각을 추진한다는 조선비즈 보도에 대해, 회사는 삼정KPMG를 주관사로 선정해 매각을 검토 중이나 거래 상대방·가격·일정은 확정되지 않았다고 밝혔다.</p>
+      <span class="m">비비안 공시 · 2026-09-23</span></li>
+    <li><span class="st c">회사 확인·검토 중</span><h3><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260923800166" target="_blank" rel="noopener">동아지질 — 풍문또는보도에대한해명(미확정)</a></h3><p>동아지질 최대주주의 지분 매각 추진설(서울경제 보도)에 대해 회사는 최대주주가 여러 전략적 방안을 검토하는 것으로 알고 있으나 결정된 사항은 없다고 밝혔다.</p>
+      <span class="m">동아지질 공시 · 2026-09-23</span></li>
+    <li><span class="st c">회사 확인·검토 중</span><h3><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260923800384" target="_blank" rel="noopener">코오롱글로벌 — 풍문또는보도에대한해명(미확정)</a></h3><p>코오롱글로벌이 해상풍력 핵심 프로젝트를 판다는 더벨 보도에 대해, 회사는 사업 포트폴리오 차원에서 내부 검토 중이며 확정된 바 없다고 밝혔다.</p>
+      <span class="m">코오롱글로벌 공시 · 2026-09-23</span></li>
+    <li><span class="st c">회사 확인·검토 중</span><h3><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260923800244" target="_blank" rel="noopener">LS — 풍문또는보도에대한해명(미확정)(자회사의 주요경영사항)</a></h3><p>LS가 영국에 세계 최대 초고압케이블 공장을 짓는다는 2024년 보도에 대해, 회사는 영국 정부 등과 협의 중이며 확정되면 다시 공시하겠다고 밝혔다.</p>
+      <span class="m">LS 공시 · 2026-09-23</span></li>
+  </ul>
 </section>
 <section class="sec s-disclosures" aria-label="주요 공시">
   <div class="kicker"><h2>주요 공시</h2><span class="unit">9/23(수)~9/24(목) 공시</span></div>
@@ -393,8 +461,267 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
 
 <footer class="colophon">
   <p class="disclaimer"><strong>투자 판단은 본인 책임입니다.</strong> 본 신문은 공개된 데이터를 자동으로 수집·정리한 참고 자료이며, 특정 종목의 매수·매도를 권유하지 않습니다. 투자 판단과 그 결과에 대한 책임은 투자자 본인에게 있습니다.</p>
-  <p class="imprint">아침증권신문 · 제1호 · 2026년 9월 25일 금요일 · 매일 오전 7시(KST) 자동 발행 · 수집 2026-09-25 22:29 · 모든 수치에 기준 시점과 출처를 함께 표기합니다.</p>
+  <p class="imprint">아침증권신문 · 제1호 · 2026년 9월 25일 금요일 · 매일 오전 7시(KST) 자동 발행 · 수집 2026-09-25 22:48 · 모든 수치에 기준 시점과 출처를 함께 표기합니다.</p>
 </footer>
+</div>
+
+<div id="v-mine" role="tabpanel" aria-labelledby="t-mine" hidden>
+  <div class="app" id="app"></div>
+</div>
+<script type="application/json" id="stock-data">{"collected_at": "2026-09-25T22:48:44+09:00", "issue_date": "2026-09-25", "sample": false, "snapshot": [], "stocks": {}}</script>
+<script>
+
+(function () {
+  "use strict";
+  var DATA = JSON.parse(document.getElementById("stock-data").textContent);
+  var app = document.getElementById("app");
+  var db = null;
+  var holdings = (DATA.snapshot || []).map(function (h) { return Object.assign({}, h, { id: keyOf(h) }); });
+  var view = { name: "list" };
+  var flash = null;
+
+  function keyOf(h) { return String(h.market || "KR").toUpperCase() + "-" + String(h.code || "").toUpperCase(); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function nf(v, d) {
+    if (v == null || isNaN(v)) return "—";
+    return Number(v).toLocaleString("ko-KR", { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function money(v, cur) { return v == null ? "—" : (cur === "KRW" ? nf(v, 0) + "원" : "$" + nf(v, 2)); }
+  function dirc(v) { return v == null || v === 0 ? "flat" : (v > 0 ? "up" : "down"); }
+  function pct(v) { return v == null ? "" : (v > 0 ? "+" : "") + nf(v, 2) + "%"; }
+  function signed(v, d) { return v == null ? "—" : (v > 0 ? "▲" : v < 0 ? "▼" : "") + nf(Math.abs(v), d); }
+  function curOf(h, st) { return (st && st.price && st.price.currency) || (h.market === "KR" ? "KRW" : "USD"); }
+  function day(s) {
+    if (!s) return "";
+    var d = new Date(s.slice(0, 10) + "T00:00:00");
+    return (d.getMonth() + 1) + "/" + d.getDate() + "(" + "일월화수목금토"[d.getDay()] + ")";
+  }
+  function big(v) {
+    if (v == null) return "—";
+    if (v >= 1e9) return "$" + nf(v / 1e9, 1) + "B";
+    if (v >= 1e6) return "$" + nf(v / 1e6, 1) + "M";
+    return "$" + nf(v, 0);
+  }
+  function num(v) { v = String(v || "").replace(/,/g, "").trim(); return v === "" || isNaN(v) ? null : Number(v); }
+
+  /* ── 탭 ─────────────────────────────── */
+  var tabs = { paper: document.getElementById("t-paper"), mine: document.getElementById("t-mine") };
+  function show(which) {
+    ["paper", "mine"].forEach(function (k) {
+      var on = k === which;
+      tabs[k].setAttribute("aria-selected", on ? "true" : "false");
+      document.getElementById("v-" + k).hidden = !on;
+    });
+    if (which === "mine") render();
+    window.scrollTo(0, 0);
+  }
+  tabs.paper.addEventListener("click", function () { show("paper"); });
+  tabs.mine.addEventListener("click", function () { show("mine"); });
+  if (location.hash === "#mine") show("mine");
+
+  /* ── 목록 ───────────────────────────── */
+  function rowHtml(h) {
+    var st = DATA.stocks[h.id], p = st && st.price, cur = curOf(h, st), pl = "";
+    if (p && h.qty && h.avg) {
+      var g = (p.value - h.avg) * h.qty, r = (p.value / h.avg - 1) * 100;
+      pl = ' · <span class="' + dirc(g) + '">' + (g > 0 ? "+" : "") + money(g, cur) + " (" + pct(r) + ")</span>";
+    }
+    var right = p ? '<span class="l2 r ' + dirc(p.change_pct) + '">' + (p.change_pct == null ? "전일비 없음" : pct(p.change_pct)) + "</span>"
+                  : '<span class="l2 r">' + (st ? "시세 없음" : "내일 아침 반영") + "</span>";
+    return '<li><button type="button" class="row" data-id="' + esc(h.id) + '">' +
+      '<span class="nm">' + esc(h.name || (st && st.name) || h.code) + "<small>" +
+      esc((st && st.exchange) || (h.market === "KR" ? "국내" : "미국")) + " " + esc(h.code) + "</small></span>" +
+      '<span class="px">' + (p ? money(p.value, cur) : "—") + "</span>" +
+      '<span class="l2">' + (h.qty ? "보유 " + nf(h.qty, h.qty % 1 ? 2 : 0) + "주" : "보유 수량 미입력") + pl + "</span>" + right +
+      "</button></li>";
+  }
+
+  function renderList() {
+    var list = holdings.length ? '<ul class="plist">' + holdings.map(rowHtml).join("") + "</ul>"
+      : '<p class="msg">아직 추가한 종목이 없습니다. 아래에서 추가하세요.</p>';
+    app.innerHTML =
+      '<div><h2>내 종목</h2><p class="sub">' + esc(DATA.issue_date) + " 아침 발행 기준 · 종목을 누르면 중요 뉴스·실적·손익을 봅니다</p>" +
+      (DATA.sample ? '<p class="sample">견본 — 샘플 데이터입니다</p>' : "") + "</div>" +
+      list + formHtml();
+    app.querySelectorAll("button.row").forEach(function (b) {
+      b.addEventListener("click", function () { view = { name: "detail", id: b.getAttribute("data-id") }; render(); window.scrollTo(0, 0); });
+    });
+    var f = document.getElementById("addf");
+    if (f) f.addEventListener("submit", onAdd);
+    if (flash) { setMsg(flash.text, flash.err); flash = null; }
+  }
+
+  function formHtml() {
+    if (!db) {
+      return '<p class="msg">종목 추가·수정은 claude.ai에서 이 페이지를 열었을 때만 됩니다.</p>';
+    }
+    return '<form class="box" id="addf" novalidate><h3>종목 추가</h3><div class="fgrid">' +
+      '<label for="f-market">시장<select id="f-market"><option value="KR">국내</option><option value="US">미국</option></select></label>' +
+      '<label for="f-code">종목코드·티커<input id="f-code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="005930 / NVDA"></label>' +
+      '<label class="wide" for="f-name">이름 (선택)<input id="f-name" autocomplete="off" placeholder="삼성전자"></label>' +
+      '<label for="f-qty">보유 수량 (선택)<input id="f-qty" inputmode="decimal" autocomplete="off" placeholder="10"></label>' +
+      '<label for="f-avg">평균 단가 (선택)<input id="f-avg" inputmode="decimal" autocomplete="off" placeholder="원 / 달러"></label>' +
+      '</div><button class="btn" type="submit">추가</button><p class="msg" id="f-msg" aria-live="polite"></p></form>';
+  }
+
+  function setMsg(text, err) {
+    var m = document.getElementById("f-msg") || document.getElementById("d-msg");
+    if (m) { m.textContent = text; m.className = "msg" + (err ? " err" : ""); }
+  }
+
+  function onAdd(ev) {
+    ev.preventDefault();
+    var market = document.getElementById("f-market").value;
+    var code = document.getElementById("f-code").value.trim().toUpperCase();
+    if (market === "KR" && !/^\d{6}$/.test(code)) return setMsg("국내 종목은 6자리 숫자 코드로 입력하세요. 예: 005930", true);
+    if (market === "US" && !/^[A-Z][A-Z.\-]{0,9}$/.test(code)) return setMsg("미국 종목은 티커로 입력하세요. 예: NVDA, BRK.B", true);
+    var h = { market: market, code: code, name: document.getElementById("f-name").value.trim(),
+              qty: num(document.getElementById("f-qty").value), avg: num(document.getElementById("f-avg").value),
+              added_at: new Date().toISOString() };
+    var btn = ev.target.querySelector("button");
+    btn.disabled = true;
+    db.doc("holdings/" + keyOf(h)).set(h).then(function () {
+      flash = { text: (h.name || code) + " 추가했습니다. " + (DATA.stocks[keyOf(h)] ? "" : "시세·뉴스·실적은 내일 아침 발행 때 채워집니다."), err: false };
+      renderList();
+    }).catch(function (e) {
+      btn.disabled = false;
+      setMsg(e && e.code === "quota_exceeded" ? "저장 공간이 가득 찼습니다. 종목을 몇 개 지운 뒤 다시 시도하세요."
+             : "저장하지 못했습니다 (" + (e && e.code) + "). 이 페이지를 수정할 권한이 있는지 확인하세요.", true);
+    });
+  }
+
+  /* ── 상세 ───────────────────────────── */
+  function renderDetail(h) {
+    var st = DATA.stocks[h.id], p = st && st.price, cur = curOf(h, st), html = "";
+    html += '<div><button type="button" class="btn ghost" id="back">← 내 종목</button></div>';
+    html += '<div class="dhead"><div class="t">' + esc(h.name || (st && st.name) || h.code) + "<small>" +
+      esc((st && st.exchange) || (h.market === "KR" ? "국내" : "미국")) + " " + esc(h.code) + "</small></div>";
+    if (p) {
+      html += '<div class="p ' + dirc(p.change) + '">' + money(p.value, cur) + "</div>" +
+        '<div class="c ' + dirc(p.change) + '">' + (p.change == null ? "전일비 확인 불가" : signed(p.change, cur === "KRW" ? 0 : 2) + " (" + pct(p.change_pct) + ")") + "</div>" +
+        '<div class="sub">기준 ' + esc(p.as_of) + ' · <a href="' + esc(p.url) + '" target="_blank" rel="noopener">' + esc(p.source) + "</a></div>";
+    } else {
+      html += '<p class="msg">' + (st ? "시세를 받지 못했습니다." : "이 종목 정보는 내일 아침 발행 때 채워집니다.") + "</p>";
+    }
+    html += "</div>";
+
+    if (p) {
+      var val = h.qty ? p.value * h.qty : null, g = h.qty && h.avg ? (p.value - h.avg) * h.qty : null;
+      html += '<div class="kv"><div><b>보유 수량</b><span>' + (h.qty ? nf(h.qty, h.qty % 1 ? 2 : 0) + "주" : "—") + "</span></div>" +
+        "<div><b>평균 단가</b><span>" + money(h.avg, cur) + "</span></div>" +
+        "<div><b>평가 금액</b><span>" + money(val, cur) + "</span></div>" +
+        '<div><b>평가 손익</b><span class="' + dirc(g) + '">' + (g == null ? "—" : (g > 0 ? "+" : "") + money(g, cur)) + "</span></div>" +
+        '<div><b>수익률</b><span class="' + dirc(g) + '">' + (g == null ? "—" : pct((p.value / h.avg - 1) * 100)) + "</span></div>" +
+        "<div><b>52주 범위</b><span>" + (p.low52 && p.high52 ? nf((p.value - p.low52) / (p.high52 - p.low52) * 100, 0) + "% 위치" : "—") + "</span></div></div>";
+      if (p.low52 && p.high52 && p.high52 > p.low52) {
+        var pos = Math.max(0, Math.min(100, (p.value - p.low52) / (p.high52 - p.low52) * 100));
+        html += '<div class="dsec"><div class="range" aria-hidden="true"><i style="left:calc(' + pos.toFixed(1) + '% - 1px)"></i></div>' +
+          '<div class="rl"><span>52주 최저 ' + money(p.low52, cur) + "</span><span>최고 " + money(p.high52, cur) + "</span></div></div>";
+      }
+    }
+
+    if (st && st.earnings) {
+      var e = st.earnings;
+      html += '<div class="dsec"><h4>실적</h4>';
+      if (e.next) {
+        html += '<p class="next">다음 실적 발표 ' + day(e.next.date) + " " + esc(e.next.hour || "") +
+          "<small>" + esc(e.next.quarter) + " · EPS 예상 " + (e.next.eps_est == null ? "—" : "$" + nf(e.next.eps_est, 2)) +
+          " · 매출 예상 " + big(e.next.rev_est) + "</small></p>";
+      } else if (h.market === "US") {
+        html += '<p class="msg">180일 안에 잡힌 실적 발표 일정이 없습니다.</p>';
+      }
+      if (e.history && e.history.length) {
+        html += "<table><thead><tr><th>분기</th><th>EPS 예상</th><th>EPS 실제</th><th>서프라이즈</th></tr></thead><tbody>" +
+          e.history.map(function (x) {
+            return "<tr><td>" + esc(x.quarter) + "</td><td>" + (x.eps_est == null ? "—" : nf(x.eps_est, 2)) + "</td><td>" +
+              (x.eps_act == null ? "—" : nf(x.eps_act, 2)) + '</td><td class="' + dirc(x.surprise_pct) + '">' + pct(x.surprise_pct) + "</td></tr>";
+          }).join("") + "</tbody></table>";
+      }
+      if (st.filings && st.filings.length) {
+        html += '<ul class="disc">' + st.filings.map(function (f) {
+          return '<li><div class="rep"><a href="' + esc(f.url) + '" target="_blank" rel="noopener">' + esc(f.title) + '</a></div><div class="d">' + day(f.date) + "</div></li>";
+        }).join("") + "</ul>";
+      }
+      if (e.note) html += '<p class="sub">' + esc(e.note) + "</p>";
+      html += '<p class="sub">출처: ' + esc(e.source || "") + "</p></div>";
+    }
+
+    if (st) {
+      html += '<div class="dsec"><h4>중요 뉴스</h4>';
+      if (st.news && st.news.length) {
+        html += '<div class="news">' + st.news.map(function (a) {
+          return '<article class="art"><div class="meta">' + esc(a.source) + " · " + esc((a.published || "").replace("T", " ").slice(5, 16)) +
+            (a.lang === "en" ? " · 영문 기사" : "") + '</div><h3><a href="' + esc(a.url) + '" target="_blank" rel="noopener">' + esc(a.title) +
+            "</a></h3>" + (a.summary ? "<p>" + esc(a.summary) + "</p>" : "") + "</article>";
+        }).join("") + "</div>";
+      } else {
+        html += '<p class="msg">최근 7일 동안 이 종목에 큰 영향을 줄 만한 뉴스가 없습니다.</p>';
+      }
+      html += "</div>";
+    }
+
+    if (db) {
+      html += '<form class="box" id="editf" novalidate><h3>보유 정보 수정</h3><div class="fgrid">' +
+        '<label for="e-qty">보유 수량<input id="e-qty" inputmode="decimal" value="' + esc(h.qty == null ? "" : h.qty) + '"></label>' +
+        '<label for="e-avg">평균 단가<input id="e-avg" inputmode="decimal" value="' + esc(h.avg == null ? "" : h.avg) + '"></label></div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">저장</button>' +
+        '<button class="btn danger" type="button" id="del">종목 삭제</button></div><p class="msg" id="d-msg" aria-live="polite"></p></form>';
+    }
+    app.innerHTML = html;
+    document.getElementById("back").addEventListener("click", function () { view = { name: "list" }; render(); window.scrollTo(0, 0); });
+    var ef = document.getElementById("editf");
+    if (ef) {
+      ef.addEventListener("submit", function (ev) {
+        ev.preventDefault();
+        db.doc("holdings/" + h.id).update({ qty: num(document.getElementById("e-qty").value), avg: num(document.getElementById("e-avg").value) })
+          .then(function () { setMsg("저장했습니다."); })
+          .catch(function (e) { setMsg("저장하지 못했습니다 (" + (e && e.code) + ").", true); });
+      });
+      var del = document.getElementById("del"), armed = false;
+      del.addEventListener("click", function () {
+        if (!armed) { armed = true; del.textContent = "정말 삭제 (한 번 더 누르기)"; return; }
+        db.doc("holdings/" + h.id).delete().then(function () {
+          flash = { text: (h.name || h.code) + " 삭제했습니다.", err: false };
+          view = { name: "list" }; render();
+        }).catch(function (e) { setMsg("삭제하지 못했습니다 (" + (e && e.code) + ").", true); });
+      });
+    }
+  }
+
+  function render() {
+    if (view.name === "detail") {
+      var h = holdings.filter(function (x) { return x.id === view.id; })[0];
+      if (h) return renderDetail(h);
+      view = { name: "list" };
+    }
+    renderList();
+  }
+
+  /* ── 저장소 연결 ─────────────────────── */
+  render();
+  var use = window.claude && window.claude.use ? window.claude.use("db") : Promise.resolve(null);
+  Promise.resolve(use).then(function (ns) {
+    if (!ns) return;
+    db = ns;
+    var first = true;
+    db.collection("holdings").onSnapshot(function (snap) {
+      holdings = snap.docs.map(function (d) { return Object.assign({}, d.data(), { id: d.id }); })
+        .sort(function (a, b) { return String(a.added_at || "").localeCompare(String(b.added_at || "")); });
+      // 편집 중인 입력을 지우지 않도록, 목록 화면이거나 처음 받을 때만 다시 그림
+      if (first || view.name === "list") render();
+      first = false;
+    }, function (e) {
+      flash = { text: "저장소 연결이 끊겼습니다 (" + (e && e.code) + "). 새로고침하세요.", err: true };
+      render();
+    });
+  }).catch(function () { /* 저장소 없이도 동작 */ });
+})();
+
+</script>
 </div>
 </body>
 </html>

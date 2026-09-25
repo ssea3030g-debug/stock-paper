@@ -2,6 +2,8 @@
 from .base import BaseCollector, Context
 from .calendar import CalendarCollector
 from .disclosures import DisclosuresCollector
+from .holdings import HoldingsCollector
+from .rumors import RumorsCollector
 from .indicators import IndicatorsCollector
 from .korea_market import KoreaMarketCollector
 from .news import NewsCollector
@@ -11,6 +13,7 @@ from .watchlist import WatchlistCollector
 REGISTRY: dict[str, type[BaseCollector]] = {c.id: c for c in (
     KoreaMarketCollector, UsMarketCollector, IndicatorsCollector,
     WatchlistCollector, NewsCollector, CalendarCollector, DisclosuresCollector,
+    HoldingsCollector, RumorsCollector,
 )}
 
 __all__ = ["REGISTRY", "BaseCollector", "Context"]

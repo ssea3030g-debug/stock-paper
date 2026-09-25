@@ -82,7 +82,7 @@ class RenderTest(unittest.TestCase):
     def test_newspaper_parts(self):
         h = self.html()
         for text in ("아침증권신문", "제1호", "2026년 9월 25일 금요일", "추석", "국내 증시", "미국 증시", "주요 지표",
-                     "주요 뉴스", "핵심 3줄", "투자 판단은 본인 책임", "견본", "출처:"):
+                     "오늘의 큰 뉴스", "찌라시·풍문 레이더", "내 종목", "핵심 3줄", "투자 판단은 본인 책임", "견본", "출처:"):
             self.assertIn(text, h)
         self.assertIn('class="v up">3,438.52', h)
         self.assertIn("추석으로", h)
@@ -95,11 +95,11 @@ class RenderTest(unittest.TestCase):
     def test_section_order_and_toggle(self):
         cfg = copy.deepcopy(CFG)
         secs = {s["id"]: s for s in cfg["sections"]}
-        secs["news"]["enabled"] = False
+        secs["news"] = dict(secs["news"], enabled=False)
         cfg["sections"] = [secs["us_market"], secs["korea_market"], secs["news"], secs["disclaimer"]]
         h = self.html(cfg)
         self.assertLess(h.index('aria-label="미국 증시"'), h.index('aria-label="국내 증시"'))
-        self.assertNotIn('aria-label="주요 뉴스"', h)
+        self.assertNotIn('aria-label="오늘의 큰 뉴스 3"', h)
         self.assertNotIn('aria-label="머리기사"', h)
 
     def test_failed_collectors_show_no_data(self):

@@ -167,6 +167,73 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
 .archive ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
 .archive a{display:inline-block;font:500 12.5px/1 var(--f-sans);font-variant-numeric:tabular-nums;border:1px solid var(--hair);padding:7px 9px;text-decoration:none}
 .archive a[aria-current]{border-color:var(--rule);background:var(--ink);color:var(--paper)}
+
+/* ── 탭 ───────────────────────────── */
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:grid;grid-template-columns:1fr 1fr;
+  border-bottom:1px solid var(--rule);margin-inline:-16px;padding-inline:16px}
+.tabs button{appearance:none;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);
+  font:700 15px/1 var(--f-serif);padding:13px 0 10px;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.tabs button:focus-visible{outline:2px solid var(--ink);outline-offset:-4px}
+
+/* ── 찌라시 ───────────────────────── */
+.rumor{list-style:none;margin:0;padding:0}
+.rumor li{padding:10px 0;border-bottom:1px dashed var(--hair)}
+.rumor li:last-child{border-bottom:0}
+.rumor .st{display:inline-block;font:700 10.5px/1 var(--f-sans);padding:3px 5px;margin-right:6px;border:1px solid currentColor;vertical-align:2px}
+.rumor .st.u{color:var(--stamp)} .rumor .st.d{color:var(--down)} .rumor .st.c{color:var(--ink)}
+.rumor h3{display:inline;font:700 15.5px/1.5 var(--f-serif);word-break:keep-all}
+.rumor p{margin:4px 0 0;font:400 14px/1.65 var(--f-sans);color:var(--ink-2);word-break:keep-all}
+.rumor .m{display:block;margin-top:3px;font:500 11.5px/1.4 var(--f-sans);color:var(--muted)}
+.warnline{font:500 11.5px/1.5 var(--f-sans);color:var(--stamp);margin:0 0 8px}
+@media (min-width:900px){ .s-rumors,.s-holdings{grid-column:span 6} }
+
+/* ── 내 종목 앱 ────────────────────── */
+.app{padding-block:14px 30px;display:grid;gap:18px;max-width:760px;margin-inline:auto}
+.app h2{font:900 24px/1.2 var(--f-serif);margin:0;letter-spacing:-.02em}
+.app .sub{font:400 12.5px/1.5 var(--f-sans);color:var(--muted);margin:4px 0 0}
+.plist{list-style:none;margin:0;padding:0;border-top:2px solid var(--rule)}
+.plist li{border-bottom:1px solid var(--hair)}
+.plist button.row{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 2px;cursor:pointer}
+.plist button.row:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.plist .nm{font:700 16px/1.3 var(--f-serif)}
+.plist .nm small{font:500 11px/1 var(--f-sans);color:var(--muted);margin-left:6px}
+.plist .px{font:600 16px/1.3 var(--f-sans);font-variant-numeric:tabular-nums;text-align:right}
+.plist .l2{font:400 12px/1.4 var(--f-sans);color:var(--muted);font-variant-numeric:tabular-nums}
+.plist .l2.r{text-align:right}
+.plist .up,.kv .up,.dhead .up{color:var(--up)} .plist .down,.kv .down,.dhead .down{color:var(--down)}
+.box{border:1px solid var(--rule);padding:14px;display:grid;gap:10px;background:var(--paper)}
+.box h3{margin:0;font:700 15px/1.3 var(--f-serif)}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fgrid label{display:grid;gap:4px;font:500 12px/1.3 var(--f-sans);color:var(--ink-2)}
+.fgrid .wide{grid-column:1 / -1}
+.app input,.app select{font:500 16px/1.2 var(--f-sans);padding:10px;border:1px solid var(--hair);background:var(--paper-2);color:var(--ink);border-radius:0;width:100%;min-width:0}
+.app input:focus,.app select:focus{outline:2px solid var(--ink);outline-offset:-1px}
+.btn{appearance:none;font:700 14px/1 var(--f-sans);padding:12px 14px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer}
+.btn.ghost{background:none;color:var(--ink)}
+.btn.danger{background:none;color:var(--stamp);border-color:var(--stamp)}
+.btn:focus-visible{outline:2px solid var(--stamp);outline-offset:2px}
+.msg{font:500 12.5px/1.5 var(--f-sans);color:var(--ink-2);margin:0}
+.msg.err{color:var(--stamp)}
+.dhead{display:grid;gap:4px;border-bottom:3px double var(--rule);padding-bottom:12px}
+.dhead .t{font:900 28px/1.15 var(--f-serif);letter-spacing:-.02em}
+.dhead .t small{font:500 12px/1 var(--f-sans);color:var(--muted);margin-left:8px;letter-spacing:0}
+.dhead .p{font:600 32px/1.1 var(--f-sans);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.dhead .c{font:500 14px/1.3 var(--f-sans);font-variant-numeric:tabular-nums}
+.kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--hair);border:1px solid var(--hair)}
+.kv div{background:var(--paper);padding:9px 10px}
+.kv b{display:block;font:500 11px/1.3 var(--f-sans);color:var(--muted)}
+.kv span{font:600 15px/1.35 var(--f-sans);font-variant-numeric:tabular-nums}
+.range{height:6px;background:var(--hair);position:relative;margin:8px 0 4px}
+.range i{position:absolute;top:-4px;width:3px;height:14px;background:var(--ink)}
+.rl{display:flex;justify-content:space-between;font:400 11.5px/1.3 var(--f-sans);color:var(--muted);font-variant-numeric:tabular-nums}
+.dsec h4{font:700 16px/1.3 var(--f-serif);margin:0 0 8px;padding-bottom:4px;border-bottom:2px solid var(--rule)}
+.dsec table{width:100%;border-collapse:collapse;font:400 13.5px/1.35 var(--f-sans);font-variant-numeric:tabular-nums}
+.dsec th{font:500 11px/1.2 var(--f-sans);color:var(--muted);text-align:right;padding:4px;border-bottom:1px solid var(--rule)}
+.dsec td{text-align:right;padding:8px 4px;border-bottom:1px solid var(--hair)}
+.dsec th:first-child,.dsec td:first-child{text-align:left}
+.next{font:600 15px/1.5 var(--f-sans)}
+.next small{display:block;font:400 12.5px/1.5 var(--f-sans);color:var(--muted)}
 @media (prefers-reduced-motion: no-preference){ a{transition:text-decoration-color .15s} }
 </style>
 {%- if standalone %}
@@ -192,6 +259,11 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
   {%- endfor %}
 {%- endmacro %}
 
+<nav class="tabs" role="tablist" aria-label="보기">
+  <button type="button" role="tab" id="t-paper" aria-controls="v-paper" aria-selected="true">오늘 신문</button>
+  <button type="button" role="tab" id="t-mine" aria-controls="v-mine" aria-selected="false">내 종목</button>
+</nav>
+<div id="v-paper" role="tabpanel" aria-labelledby="t-paper">
 <header class="mast">
   <div class="ear" aria-label="발행 정보">
     <b>발행</b>{{ date_ko }}<br>제{{ issue_no }}호 · 오전 7시 발행
@@ -296,7 +368,7 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
 
 {%- elif s.id == 'news' %}
 <section class="sec s-news" aria-label="{{ s.title }}">
-  <div class="kicker"><h2>{{ s.title }}</h2><span class="unit">최근 24시간</span></div>
+  <div class="kicker"><h2>{{ s.title }}</h2><span class="unit">최근 24시간 · 시장 파장 순</span></div>
   {%- if sec and sec['items'] %}
   <div class="news">
     {%- for a in news_items %}
@@ -312,6 +384,48 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
   <p class="nodata">데이터 없음</p>
   {%- endif %}
   {{ src_line(sec) }}
+</section>
+
+{%- elif s.id == 'rumors' %}
+<section class="sec s-rumors" aria-label="{{ s.title }}">
+  <div class="kicker"><h2>{{ s.title }}</h2><span class="unit">미확인 보도 · 풍문 해명 공시</span></div>
+  <p class="warnline">사실로 확인되지 않은 이야기입니다. 원문과 회사 공시로 직접 확인하세요.</p>
+  {%- if rumors %}
+  <ul class="rumor">
+    {%- for r in rumors %}
+    <li><span class="st {{ 'd' if r.status == '회사 부인' else ('c' if r.status in ('회사 확인·검토 중', '회사 해명 공시', '조회공시') else 'u') }}">{{ r.status }}</span><h3><a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.title }}</a></h3>
+      {%- if r.summary %}<p>{{ r.summary }}</p>{% endif %}
+      <span class="m">{{ r.source }} · {{ r.date | replace('T', ' ') }}</span></li>
+    {%- endfor %}
+  </ul>
+  {%- else %}
+  <p class="nodata">{{ (sec and sec.note) or '데이터 없음' }}</p>
+  {%- endif %}
+</section>
+
+{%- elif s.id == 'holdings' %}
+<section class="sec s-holdings" aria-label="{{ s.title }}">
+  <div class="kicker"><h2>{{ s.title }}</h2><span class="unit">종가 · 전일 대비</span></div>
+  {%- if stocks %}
+  <div class="tbl-wrap">
+  <table class="quotes">
+    <thead><tr><th>종목</th><th>종가</th><th>등락률</th></tr></thead>
+    <tbody>
+    {%- for k, st in stocks.items() %}
+    <tr><td class="name">{{ st.name }}<small>{{ st.exchange or st.market }} {{ st.code }}</small></td>
+      {%- if st.price %}
+      <td class="val">{{ st.price.value | num(0 if st.market == 'KR' else 2) }}</td>
+      <td class="{{ st.price | dir }}">{% if st.price.change_pct is none %}—{% else %}{{ st.price.change_pct | pct }}{% endif %}</td>
+      {%- else %}<td class="nodata" colspan="2">데이터 없음</td>{% endif %}
+    </tr>
+    {%- endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="src">종목을 누르려면 위쪽 ‘내 종목’ 탭을 여세요. 뉴스·실적·손익이 있습니다.</p>
+  {%- else %}
+  <p class="nodata">위쪽 ‘내 종목’ 탭에서 보유 종목을 추가하면 다음 아침 신문부터 여기에 나옵니다.</p>
+  {%- endif %}
 </section>
 
 {%- elif s.id == 'disclosures' %}
@@ -378,6 +492,15 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
   {%- endif %}
   <p class="imprint">{{ paper.title }} · 제{{ issue_no }}호 · {{ date_ko }} · 매일 오전 7시(KST) 자동 발행 · 수집 {{ collected_at }} · 모든 수치에 기준 시점과 출처를 함께 표기합니다.</p>
 </footer>
+</div>
+
+<div id="v-mine" role="tabpanel" aria-labelledby="t-mine" hidden>
+  <div class="app" id="app"></div>
+</div>
+<script type="application/json" id="stock-data">{{ app_data | tojson }}</script>
+<script>
+{% include "app.js" %}
+</script>
 </div>
 {%- if standalone %}
 </body>

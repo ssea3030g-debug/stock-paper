@@ -21,8 +21,9 @@ sections:
   - { id: korea_market, enabled: true, title: "국내 증시" }
   - { id: us_market,    enabled: true, title: "미국 증시" }
   - { id: indicators,   enabled: true, title: "주요 지표" }
-  - { id: watchlist,    enabled: true, title: "관심 종목" }
-  - { id: news,         enabled: true, title: "주요 뉴스", max_items: 8 }
+  - { id: holdings,     enabled: true, title: "내 종목" }
+  - { id: news,         enabled: true, title: "오늘의 큰 뉴스 3", max_items: 3 }
+  - { id: rumors,       enabled: true, title: "찌라시·풍문 레이더", max_items: 5 }
   - { id: disclosures,  enabled: true, title: "주요 공시", max_items: 8 }
   - { id: calendar,     enabled: true, title: "오늘의 일정", max_items: 10 }
   - { id: key_points,   enabled: true, title: "핵심 3줄" }
@@ -69,8 +70,8 @@ collectors:
       - { id: ktb3y,   name: "국고채 3년",     unit: "%",   sources: [ecos],           ecos: "817Y002/D/010200000" }
       - { id: gold,    name: "금",             unit: "달러/온스", sources: [yfinance],      yf: "GC=F" }
 
-  watchlist:
-    enabled: true
+  watchlist:                 # (구) 설정 파일 기반 관심 종목 — 이제는 앱의 '내 종목' 탭을 사용
+    enabled: false
     stocks: []               # 예) - { name: "삼성전자", code: "005930", market: KOSPI }
                              #     - { name: "에코프로", code: "086520", market: KOSDAQ }
                              #     - { name: "애플",     code: "AAPL",   market: US }
@@ -82,11 +83,12 @@ collectors:
       - { name: "연합뉴스 경제",   url: "https://www.yna.co.kr/rss/economy.xml" }
       - { name: "한국경제 증권",   url: "https://www.hankyung.com/feed/finance" }
       - { name: "매일경제 증권",   url: "https://www.mk.co.kr/rss/50200011/" }
+      - { name: "미국 시장 뉴스", type: finnhub, category: general, url: "https://finnhub.io/api/v1/news", public_url: "https://finnhub.io/" }
     keywords:
       include: []            # 비우면 전체. 하나라도 포함하면 통과
       exclude: ["광고", "협찬"]
     dedupe: true             # 제목 유사도로 중복 기사 제거
-    max_collect: 30          # 요약 단계로 넘길 최대 기사 수 (지면에는 sections.news.max_items 만큼)
+    max_collect: 40          # 요약 단계로 넘길 최대 기사 수 — Claude 가 이 중 '진짜 큰 뉴스' 3개를 고름
 
   calendar:
     enabled: true
@@ -120,6 +122,17 @@ collectors:
     max_collect: 20
     # 관심 종목(watchlist.stocks)의 공시는 키워드와 상관없이 맨 앞에 표시
 
+  holdings:                  # 앱 '내 종목' 탭에서 추가한 종목 (매일 아침 앱 저장소에서 읽어 옴)
+    enabled: true
+    news_days: 7             # 종목 뉴스 조회 기간
+    news_candidates: 12      # Claude 가 중요 뉴스를 고를 후보 수
+    filing_days: 180         # 국내 종목 실적 공시 조회 기간
+
+  rumors:                    # 찌라시·풍문 레이더 — 언론의 미확인 보도 + DART 풍문 해명·조회공시
+    enabled: true
+    filing_days: 3
+    max_collect: 15
+
 # ── 휴장일 ───────────────────────────────────────────────────
 market_calendar:            # 기본 휴장일 표: data/krx_holidays.yaml (매년 갱신)
   extra_holidays: []         # 임시공휴일 등 추가. 예) - { date: 2026-10-10, name: "임시공휴일" }
@@ -134,7 +147,9 @@ summary:
   provider: auto
   model: claude-opus-5      # provider: api 일 때만 사용
   max_tokens: 3000
-  news_items: 6              # 요약할 기사 수
+  news_items: 3              # 오늘의 큰 뉴스 개수 (시장 전체에 파장이 큰 것만)
+  holding_news: 3            # 내 종목별 중요 뉴스 개수
+  rumor_items: 5             # 찌라시·풍문 레이더 항목 수
   news_summary_lines: 3      # 기사별 요약 줄 수 (2~3)
   key_points: 3
   banned_phrases:            # 투자 권유 표현 — 요약에 있으면 해당 부분은 버리고 대체 문구 사용

@@ -16,4 +16,6 @@
 <description>광고 기사</description><pubDate>Thu, 25 Sep 2026 06:00:00 +0900</pubDate></item>
 <item><title>[샘플] 지난주 오래된 기사</title><link>https://news.example.com/old</link>
 <description>오래된 기사.</description><pubDate>Mon, 15 Sep 2026 09:00:00 +0900</pubDate></item>
+<item><title>[샘플] 삼성전자, 마곡에 AI 데이터센터 추진설…회사 "검토 중"</title><link>https://news.example.com/r1</link>
+<description>삼성전자가 마곡에 대형 AI 데이터센터 건립을 검토 중인 것으로 알려졌다.</description><pubDate>Thu, 25 Sep 2026 06:20:00 +0900</pubDate></item>
 </channel></rss>

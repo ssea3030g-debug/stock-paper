@@ -137,7 +137,7 @@ class NewsTest(unittest.TestCase):
         self.assertEqual(first_sentence("<p>첫 문장이다. 둘째 문장이다.</p>"), "첫 문장이다.")
 
     def test_feed_failure(self):
-        r = run("news", fail=(".xml", "/feed", "/rss"))
+        r = run("news", fail=(".xml", "/feed", "/rss", "finnhub"))
         self.assertFalse(r.ok)
 
 
@@ -228,3 +228,48 @@ class RedactTest(unittest.TestCase):
             h = HttpClient()
         msg = "400 for url: https://x/?api_key=secret%ED%82%A41234 and /secret키1234/"
         self.assertNotIn("secret", h.redact(msg))
+
+
+class HoldingsTest(unittest.TestCase):
+    def run_h(self, items, **kw):
+        cfg = dict(CFG["holdings"], items=items, news_pool=[])
+        return REGISTRY["holdings"](cfg, make_ctx(**kw)).run()
+
+    def test_us_and_kr(self):
+        r = self.run_h([{"market": "US", "code": "nvda"}, {"market": "KR", "code": "005930", "qty": 3, "avg": 3000}])
+        us, kr = r.items
+        self.assertEqual(us["key"], "US-NVDA")
+        self.assertEqual(us["earnings"]["next"]["date"], "2026-11-17")
+        self.assertEqual(us["earnings"]["next"]["hour"], "장 마감 후")
+        self.assertEqual(len(us["earnings"]["history"]), 2)
+        self.assertEqual(us["news"][0]["id"], "US-NVDA-n1")
+        self.assertEqual(us["news"][0]["lang"], "en")
+        self.assertEqual(kr["exchange"], "코스피")
+        self.assertEqual(kr["name"], "삼성전자")                 # 이름을 비워도 DART 기업명으로 채움
+        self.assertTrue(any("잠정" in f["title"] for f in kr["filings"]))
+        self.assertEqual(kr["qty"], 3)
+
+    def test_failures_are_per_part(self):
+        r = self.run_h([{"market": "US", "code": "NVDA"}], env={})
+        (us,) = r.items
+        self.assertIsNotNone(us["price"])                        # 시세는 Yahoo 라 키 없이도 채워짐
+        self.assertTrue(any("FINNHUB_API_KEY" in e for e in us["errors"]))
+
+    def test_empty(self):
+        r = self.run_h([])
+        self.assertTrue(r.ok)
+        self.assertIn("내 종목", r.note)
+
+
+class RumorsTest(unittest.TestCase):
+    def test_reports_and_filings(self):
+        pool = [{"id": "n1", "title": "A사, B사 인수설…회사 '사실무근'", "description": "", "url": "u", "source": "s",
+                 "published": "2026-09-25T06:00+09:00"},
+                {"id": "n2", "title": "코스피 상승 마감", "description": "", "url": "u2", "source": "s",
+                 "published": "2026-09-25T06:00+09:00"}]
+        r = REGISTRY["rumors"](dict(CFG["rumors"], news_pool=pool), make_ctx()).run()
+        self.assertEqual([x["title"] for x in r.items], ["A사, B사 인수설…회사 '사실무근'"])
+        self.assertEqual(r.items[0]["rid"], "r1")
+        f = r.data["filings"]
+        self.assertEqual(f[0]["kind"], "해명")
+        self.assertEqual(f[0]["rid"], "f1")

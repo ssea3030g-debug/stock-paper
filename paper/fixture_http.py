@@ -20,6 +20,8 @@ DEFAULT_ROUTES = [
     ("chart/%5EKQ11", None, "yahoo_kq11.json"),
     ("chart/GC%3DF", None, "yahoo_gold.json"),
     ("chart/KRW%3DX", None, "yahoo_krw.json"),
+    ("chart/005930.KS", None, "yahoo_ks11.json"),
+    ("chart/NVDA", None, "yahoo_ixic.json"),
     ("chart/", None, "yahoo_notfound.json"),
     ("kospi_dd_trd", None, "krx_kospi.json"),
     ("kosdaq_dd_trd", None, "krx_kosdaq.json"),
@@ -30,6 +32,12 @@ DEFAULT_ROUTES = [
     ("series/observations", {"series_id": "DCOILBRENTEU"}, "fred_brent.json"),
     ("releases/dates", None, "fred_releases.json"),
     ("opendart.fss.or.kr/api/list.json", None, "dart_list.json"),
+    ("opendart.fss.or.kr/api/corpCode.xml", None, "dart_corpcode.zip"),
+    ("finnhub.io/api/v1/company-news", None, "finnhub_company_news.json"),
+    ("finnhub.io/api/v1/calendar/earnings", None, "finnhub_calendar.json"),
+    ("finnhub.io/api/v1/stock/earnings", None, "finnhub_stock_earnings.json"),
+    ("finnhub.io/api/v1/news", None, "finnhub_general.json"),
+
     ("oauth2/tokenP", None, "kis_token.json"),
     ("inquire-investor", None, "kis_flows.json"),
     (".xml", None, "rss_sample.xml"),
@@ -41,7 +49,10 @@ DEFAULT_ROUTES = [
 class FakeResponse:
     def __init__(self, body: bytes, status: int = 200):
         self.content, self.status_code = body, status
-        self.text = body.decode("utf-8")
+        try:
+            self.text = body.decode("utf-8")
+        except UnicodeDecodeError:
+            self.text = ""
 
     def json(self):
         return json.loads(self.content)

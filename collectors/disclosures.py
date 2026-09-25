@@ -27,7 +27,7 @@ class DisclosuresCollector(BaseCollector):
         status = self.ctx.market_status
         end = self.ctx.issue_date - dt.timedelta(days=1)
         begin = min(dt.date.fromisoformat(status["last_session"]), end)
-        watch = {s["code"]: s["name"] for s in (self.cfg.get("watchlist") or [])
+        watch = {s["code"]: s.get("name", "") for s in (self.cfg.get("watchlist") or [])
                  if s.get("market", "KOSPI").upper() in ("KOSPI", "KOSDAQ")}
         markets = set(self.cfg.get("markets", ["Y", "K"]))
         keywords = self.cfg.get("keywords") or []
