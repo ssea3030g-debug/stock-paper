@@ -110,14 +110,18 @@ def usdkrw(results: dict) -> dict | None:
     return None
 
 
-def name_lists() -> dict:
+def name_lists(cache: Path | None = None) -> dict:
     """종목 추가 자동완성용: 국내 상장사 [이름, 코드] 전체 + 미국 종목 한글 이름 → 티커."""
     root = Path(__file__).resolve().parent.parent
     kr, us = [], {}
-    cache = root / "output" / "data" / "dart_corpcodes.json"
+    cache = cache or root / "output" / "data" / "dart_corpcodes.json"
     if cache.exists():
         m = json.loads(cache.read_text(encoding="utf-8")).get("map", {})
-        kr = sorted(([c["name"], code] for code, c in m.items()), key=lambda x: len(x[0]))
+        best: dict[str, tuple[str, str]] = {}   # 같은 이름은 가장 최근에 갱신된 회사 하나만 (상장폐지된 옛 회사 제외)
+        for code, c in m.items():
+            if c["name"] not in best or (c.get("date", ""), code) > best[c["name"]]:
+                best[c["name"]] = (c.get("date", ""), code)
+        kr = sorted(([name, code] for name, (_, code) in best.items()), key=lambda x: len(x[0]))
     usf = root / "data" / "us_names_ko.json"
     if usf.exists():
         us = json.loads(usf.read_text(encoding="utf-8"))

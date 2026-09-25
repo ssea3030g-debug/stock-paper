@@ -122,5 +122,20 @@ class RenderTest(unittest.TestCase):
         self.assertIn("2026년 9월 24일", idx)
 
 
+
+class NameListTest(unittest.TestCase):
+    def test_same_name_keeps_most_recently_updated_company(self):
+        m = {"053000": {"corp_code": "a", "name": "우리금융지주", "date": "20140101"},
+             "316140": {"corp_code": "b", "name": "우리금융지주", "date": "20250310"},
+             "005930": {"corp_code": "c", "name": "삼성전자", "date": "20250101"}}
+        with tempfile.TemporaryDirectory() as t:
+            f = Path(t) / "corp.json"
+            f.write_text(json.dumps({"date": "2026-09-25", "map": m}, ensure_ascii=False), encoding="utf-8")
+            kr = render.name_lists(f)["kr"]
+        self.assertIn(["우리금융지주", "316140"], kr)
+        self.assertNotIn(["우리금융지주", "053000"], kr)
+        self.assertIn(["삼성전자", "005930"], kr)
+
+
 if __name__ == "__main__":
     unittest.main()

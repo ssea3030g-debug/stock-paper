@@ -101,9 +101,11 @@ class HoldingsCollector(BaseCollector):
         key = self.key("DART_API_KEY")
         if key:
             self._corp_code(key, "000000")          # 기업코드 목록 로드
-            for code, c in (self._corp_map or {}).items():
-                if c["name"].replace(" ", "") == q.replace(" ", ""):
-                    return {**h, "market": "KR", "code": code, "name": c["name"]}
+            same = [(c.get("date", ""), code, c) for code, c in (self._corp_map or {}).items()
+                    if c["name"].replace(" ", "") == q.replace(" ", "")]
+            if same:   # 같은 이름이 여럿이면 가장 최근에 갱신된(=지금 상장된) 회사
+                _, code, c = max(same)
+                return {**h, "market": "KR", "code": code, "name": c["name"]}
         fk = self.key("FINNHUB_API_KEY")
         if fk and re.fullmatch(r"[A-Za-z][A-Za-z .&\-]{0,40}", q):
             res = self.ctx.http.get_json(f"{FINNHUB}/search", params={"q": q, "token": fk}).get("result") or []
@@ -348,7 +350,9 @@ class HoldingsCollector(BaseCollector):
                     sc = (el.findtext("stock_code") or "").strip()
                     if sc:
                         self._corp_map[sc] = {"corp_code": el.findtext("corp_code"),
-                                              "name": (el.findtext("corp_name") or "").strip()}
+                                              "name": (el.findtext("corp_name") or "").strip(),
+                                              # 같은 이름의 상장폐지 회사(예: 옛 우리금융지주 053000)와 구분용
+                                              "date": (el.findtext("modify_date") or "").strip()}
                 if len(self._corp_map) < 1000:     # 테스트용 샘플 목록은 캐시하지 않음
                     return self._corp_map.get(stock_code)
                 CACHE.parent.mkdir(parents=True, exist_ok=True)
