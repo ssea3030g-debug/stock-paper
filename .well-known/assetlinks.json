@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "dev.pages.stock_paper_8ou.twa",
+    "sha256_cert_fingerprints": ["96:9F:6D:83:7E:50:26:F9:94:F2:A7:C4:7B:0B:82:D8:13:17:9C:74:A8:FB:AD:AD:12:EA:1D:63:53:F6:D9:0E"]
+  }
+}]
