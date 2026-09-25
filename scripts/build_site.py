@@ -100,6 +100,26 @@ def add_pwa(html: str, site: dict) -> str:
     return html[:i] + head_tags(site) + html[i:] if i >= 0 else html
 
 
+def app_js() -> str:
+    """templates/app.js 에서 Jinja {% raw %} 표시를 뺀 최신 앱 코드."""
+    src = (ROOT / "templates" / "app.js").read_text(encoding="utf-8")
+    return "\n".join(l for l in src.splitlines() if not re.match(r"\s*\{%-?\s*(end)?raw\s*-?%\}", l))
+
+
+def refresh_app(html: str, js: str) -> str:
+    """이미 만들어진 호에 박힌 예전 앱 코드(stock-data 바로 뒤 <script>)를 최신 코드로 바꾼다."""
+    m = STOCK_DATA_RE.search(html)
+    if not m:
+        return html
+    j = html.find("<script>", m.end())
+    if j < 0 or html[m.end():j].strip():
+        return html
+    k = html.find("</script>", j)
+    if k < 0:
+        return html
+    return html[:j] + "<script>\n" + js + "\n" + html[k:]
+
+
 def add_site_storage(html: str) -> str:
     """앱 데이터 JSON 에 site_storage:true 를 넣어 app.js 가 /api/* 를 쓰게 한다. 없는 페이지는 그대로 둔다."""
     m = STOCK_DATA_RE.search(html)
@@ -136,9 +156,10 @@ def build(cfg: dict, src: Path, site_dir: Path) -> list[str]:
     if not dates:
         raise SystemExit(f"{src} 와 {site_dir} 에 YYYY-MM-DD.html 이 없습니다")
     storage = bool(site.get("storage", True))
+    js = app_js()
     for d in dates:
         p = site_dir / f"{d}.html"
-        html = p.read_text(encoding="utf-8")
+        html = refresh_app(p.read_text(encoding="utf-8"), js)
         if storage:
             html = add_site_storage(html)
         p.write_text(add_pwa(html, site), encoding="utf-8")

@@ -55,6 +55,21 @@ class BuildSiteTest(unittest.TestCase):
             html2 = (site / "2026-09-25.html").read_text(encoding="utf-8")
             self.assertEqual(html2.count('"site_storage"'), 1)
 
+    def test_old_app_code_in_issue_is_replaced_with_current(self):
+        page = ('<!doctype html><html><head><title>t</title></head><body>'
+                '<script type="application/json" id="stock-data">{"issue_date": "2026-09-25"}</script>\n'
+                '<script>\nOLD_APP_CODE();\n</script>\n</body></html>')
+        with tempfile.TemporaryDirectory() as t:
+            src, site = Path(t) / "out", Path(t) / "site"
+            src.mkdir()
+            (src / "2026-09-25.html").write_text(page, encoding="utf-8")
+            build_site.build(CFG, src, site)
+            html = (site / "index.html").read_text(encoding="utf-8")
+        self.assertNotIn("OLD_APP_CODE", html)
+        self.assertIn("function siteDb()", html)
+        self.assertNotIn("{% raw %}", html)
+        self.assertEqual(html.count("function siteDb()"), 1)
+
     def test_storage_false_skips_functions_and_flag(self):
         cfg = copy.deepcopy(CFG)   # 얕은 복사로는 site dict 가 공유돼서 깊은 복사
         cfg["site"] = dict(cfg["site"], storage=False)
