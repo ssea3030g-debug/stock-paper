@@ -3,7 +3,7 @@
 // 개인용 단일 사용자 저장소라 문서별 키 대신 배열 통째 읽기/쓰기로 충분하다.
 // 인증은 functions/_middleware.js(사이트 비밀번호)가 맡는다.
 const KEY = "list";
-const FIELDS = ["market", "code", "name", "query", "qty", "avg", "added_at"];
+const FIELDS = ["market", "code", "name", "query", "qty", "avg", "avg_cur", "added_at"];
 const MAX_ITEMS = 100;
 const ID_RE = /^(?:(?:KR|US)-[A-Z0-9.\-]{1,20}|Q-[a-z0-9]{1,20})$/;   // 종목 문서만 (다른 키가 목록에 섞이지 않게)
 
@@ -42,6 +42,7 @@ function sanitize(d) {
   if (typeof out.qty !== "number" || !isFinite(out.qty)) delete out.qty;
   if (typeof out.avg !== "number" || !isFinite(out.avg)) delete out.avg;
   if (typeof out.added_at !== "string") delete out.added_at;
+  if (out.avg_cur !== undefined && !["KRW", "USD"].includes(out.avg_cur)) delete out.avg_cur;
   return out;
 }
 
