@@ -239,6 +239,10 @@ class HoldingsTest(unittest.TestCase):
         r = self.run_h([{"market": "US", "code": "nvda"}, {"market": "KR", "code": "005930", "qty": 3, "avg": 3000}])
         us, kr = r.items
         self.assertEqual(us["key"], "US-NVDA")
+        self.assertEqual(us["price"]["source"], "Finnhub")          # 미국 시세는 Finnhub 공식 API
+        self.assertEqual(us["price"]["value"], 181.25)
+        self.assertEqual(us["price"]["as_of"], "2026-09-25 16:00 ET")
+        self.assertEqual(us["price"]["high52"], 212.19)
         self.assertEqual(us["earnings"]["next"]["date"], "2026-11-17")
         self.assertEqual(us["earnings"]["next"]["hour"], "장 마감 후")
         self.assertEqual(len(us["earnings"]["history"]), 2)
@@ -251,10 +255,28 @@ class HoldingsTest(unittest.TestCase):
         self.assertEqual(kr["news"][0]["title"], "삼성전자, HBM4 공급 계약 체결")   # 네이버 뉴스, 태그 제거
         self.assertEqual(kr["news"][0]["source"], "example.co.kr")
 
+    def test_finnhub_52week_that_does_not_fit_price_is_dropped(self):
+        from unittest import mock
+        from collectors import holdings as hmod
+        real = hmod.HoldingsCollector._price_finnhub
+        def fake_get(url, params=None, **kw):
+            if "stock/metric" in url:
+                return {"metric": {"52WeekHigh": 806102.8, "52WeekLow": 698000}}   # A주 값
+            return {"c": 505.48, "d": 0.3, "dp": 0.06, "t": 1790366400}
+        cfg = dict(CFG["holdings"], items=[{"market": "US", "code": "BRK.B"}], news_pool=[])
+        col = REGISTRY["holdings"](cfg, make_ctx())
+        info = {"name": "BRK.B"}
+        with mock.patch.object(col.ctx.http, "get_json", side_effect=fake_get):
+            real(col, {"market": "US", "code": "BRK.B"}, info, "k")
+        hi, lo = info["price"]["high52"], info["price"]["low52"]
+        self.assertTrue(hi is None or hi < 10000)
+        self.assertTrue(lo is None or lo < 10000)
+
     def test_failures_are_per_part(self):
         r = self.run_h([{"market": "US", "code": "NVDA"}], env={})
         (us,) = r.items
-        self.assertIsNotNone(us["price"])                        # 시세는 Yahoo 라 키 없이도 채워짐
+        self.assertIsNotNone(us["price"])                        # Finnhub 키가 없으면 Yahoo 로 대신 채움
+        self.assertEqual(us["price"]["source"], "Yahoo Finance")
         self.assertTrue(any("FINNHUB_API_KEY" in e for e in us["errors"]))
 
     def test_empty(self):

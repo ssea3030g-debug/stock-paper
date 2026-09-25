@@ -1,6 +1,7 @@
-// Cloudflare Pages Function: /api/quote?market=KR|US&code=005930
-// Yahoo Finance 공개 차트 API를 대신 호출해 최신 종가·전일비만 돌려준다 (개인적·비상업적 용도).
-// 브라우저는 CORS 때문에 Yahoo 를 직접 못 불러서, 이 프록시로 앱을 여는 동안 시세를 자주 새로 받는다.
+// Cloudflare Pages Function: /api/quote?market=KR|US|FX&code=005930
+// 앱을 여는 동안 시세를 자주 새로 받는 프록시 (브라우저는 CORS·키 때문에 직접 못 부름).
+// - 미국 종목: Finnhub 공식 API (Pages 암호화 변수 FINNHUB_API_KEY 가 있을 때). 없거나 실패하면 Yahoo
+// - 국내 종목·원/달러 환율: Yahoo Finance 공개 차트 API (지연 시세, 개인적·비상업적 용도)
 const YF = "https://query1.finance.yahoo.com/v8/finance/chart/";
 
 function json(data, init) {
@@ -35,16 +36,33 @@ async function tryQuote(symbol) {
     currency: (res.meta && res.meta.currency) || null,
     as_of: timestamps[last] ? new Date(timestamps[last] * 1000).toISOString() : null,
     symbol: symbol,
-    source: "Yahoo Finance",
+    source: "Yahoo Finance · 지연",
   };
 }
 
-export async function onRequestGet({ request }) {
+async function finnhubQuote(code, key) {
+  const r = await fetch("https://finnhub.io/api/v1/quote?symbol=" + encodeURIComponent(code) + "&token=" + encodeURIComponent(key));
+  if (!r.ok) return null;
+  const q = await r.json().catch(() => null);
+  if (!q || !q.c || !q.t) return null;
+  return { value: q.c, change: q.d, change_pct: q.dp, currency: "USD", as_of: new Date(q.t * 1000).toISOString(),
+           symbol: code, source: "Finnhub" };
+}
+
+export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const market = (url.searchParams.get("market") || "").toUpperCase();
   const code = (url.searchParams.get("code") || "").toUpperCase().slice(0, 20);
   if (!code || !/^[A-Z0-9.\-]{1,20}$/.test(code)) return err(400, "bad_request");
   if (market === "FX" && code !== "USDKRW") return err(400, "bad_request");
+  if (market === "US" && env && env.FINNHUB_API_KEY) {
+    try {
+      const q = await finnhubQuote(code, env.FINNHUB_API_KEY);
+      if (q) return json(q);
+    } catch (e) {
+      // Yahoo 로 대신
+    }
+  }
   const symbols = market === "FX" ? ["KRW=X"]                                    // 원/달러 환율
     : market === "KR" ? [code + ".KS", code + ".KQ"] : [code.replace(/\./g, "-")];   // Yahoo 는 BRK.B 대신 BRK-B
   for (const sym of symbols) {

@@ -3,7 +3,8 @@
 입력은 앱 저장소(db)의 holdings 목록을 매일 아침 파일로 내려받은 것 (main.py --holdings).
   국내(KR) : 시세 Yahoo(.KS→.KQ) · 뉴스 네이버 뉴스 검색 API(키 있을 때) 또는 오늘 수집한 RSS 에서 회사명 검색
              · 실적/공시 OpenDART(최근 정기보고서·잠정실적)
-  미국(US) : 시세 Yahoo · 뉴스 Finnhub company-news · 실적 Finnhub(다가오는 발표일, 최근 4분기)
+  미국(US) : 시세 Finnhub quote(키 있을 때, 없거나 실패하면 Yahoo) · 뉴스 Finnhub company-news
+             · 실적 Finnhub(다가오는 발표일, 최근 4분기)
 어느 한 항목이 실패해도 그 종목의 나머지 정보는 채운다.
 """
 from __future__ import annotations
@@ -16,6 +17,7 @@ import json
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from paper import yahoo
 
@@ -116,6 +118,12 @@ class HoldingsCollector(BaseCollector):
 
     # ── 시세 ─────────────────────────────────────────────
     def _price(self, h, info):
+        if h["market"] == "US" and self.key("FINNHUB_API_KEY"):
+            try:
+                return self._price_finnhub(h, info, self.key("FINNHUB_API_KEY"))
+            except Exception as e:  # noqa: BLE001
+                self.log.warning("%s Finnhub 시세 실패 → Yahoo: %s", h["code"], self.ctx.http.redact(str(e))
+                                 if hasattr(self.ctx.http, "redact") else e)
         live = self.cfg.get("live")
         if h["market"] == "US":
             # Yahoo 는 클래스 주식을 BRK-B 로 씀 (저장·Finnhub 는 BRK.B)
@@ -142,6 +150,33 @@ class HoldingsCollector(BaseCollector):
                          "currency": dp.extra.get("currency") or ("KRW" if h["market"] == "KR" else "USD"),
                          "high52": dp.extra.get("high52"), "low52": dp.extra.get("low52"),
                          "source": "Yahoo Finance", "url": dp.source_url}
+
+    def _price_finnhub(self, h, info, key):
+        """미국 종목 시세 (Finnhub 공식 API). 장 마감 뒤에는 종가, 장중에는 최근 체결가 — 기준 시각을 함께 적는다."""
+        q = self.ctx.http.get_json(f"{FINNHUB}/quote", params={"symbol": h["code"], "token": key})
+        if not isinstance(q, dict) or not q.get("c") or not q.get("t"):
+            raise ValueError(f"Finnhub quote 응답 없음: {h['code']}")
+        t = dt.datetime.fromtimestamp(q["t"], ZoneInfo("America/New_York"))
+        high52 = low52 = None
+        try:
+            m = (self.ctx.http.get_json(f"{FINNHUB}/stock/metric", params={"symbol": h["code"], "metric": "all",
+                                                                          "token": key}) or {}).get("metric") or {}
+            high52, low52 = m.get("52WeekHigh"), m.get("52WeekLow")
+        except Exception as e:  # noqa: BLE001   52주 범위만 빠짐
+            self.log.info("%s 52주 범위 없음: %s", h["code"], e)
+        if not (high52 and low52 and low52 * 0.9 <= q["c"] <= high52 * 1.1):
+            # 현재가와 안 맞는 값(예: BRK.B 에 A주 값)은 버리고 Yahoo 의 52주 범위로 대신
+            high52 = low52 = None
+            try:
+                meta = yahoo.last_close(self.ctx.http, h["code"].replace(".", "-"), h["code"],
+                                        on_or_before=dt.date.today() + dt.timedelta(days=1)).extra
+                high52, low52 = meta.get("high52"), meta.get("low52")
+            except Exception as e:  # noqa: BLE001
+                self.log.info("%s Yahoo 52주 범위도 없음: %s", h["code"], e)
+        info["exchange"] = "미국"
+        info["price"] = {"value": q["c"], "change": q.get("d"), "change_pct": q.get("dp"),
+                         "as_of": f"{t:%Y-%m-%d %H:%M} ET", "currency": "USD", "high52": high52, "low52": low52,
+                         "source": "Finnhub", "url": f"https://finnhub.io/api/v1/quote?symbol={h['code']}"}
 
     # ── 뉴스 ─────────────────────────────────────────────
     def _news(self, h, info):
