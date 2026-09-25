@@ -1,7 +1,7 @@
 // Cloudflare Pages Function: /api/holdings
 // 내 종목 목록을 KV 네임스페이스(바인딩 이름 HOLDINGS)에 JSON 배열 하나로 저장한다.
 // 개인용 단일 사용자 저장소라 문서별 키 대신 배열 통째 읽기/쓰기로 충분하다.
-// 이 엔드포인트는 인증이 없다 — Cloudflare Access 로 사이트 전체를 반드시 잠가야 한다.
+// 인증은 functions/_middleware.js(사이트 비밀번호)가 맡는다.
 const KEY = "list";
 const FIELDS = ["market", "code", "name", "query", "qty", "avg", "added_at"];
 const MAX_ITEMS = 100;
