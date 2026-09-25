@@ -184,7 +184,7 @@ site:
   theme_color: "#17160f"
   background_color: "#edeae2"
   storage: true               # 내 종목 저장 + 시세 새로고침용 /api/* (Cloudflare Pages Functions + KV 필요)
-  pages_url: ""                # Cloudflare Pages 주소(예: https://xxx.pages.dev). 정해지면 채움 — 비어 있으면 data/site_holdings.json 을 대신 씀
+  pages_url: "https://stock-paper-8ou.pages.dev"                # Cloudflare Pages 주소(예: https://xxx.pages.dev). 정해지면 채움 — 비어 있으면 data/site_holdings.json 을 대신 씀
 
 # ── 출력 ─────────────────────────────────────────────────────
 output:
