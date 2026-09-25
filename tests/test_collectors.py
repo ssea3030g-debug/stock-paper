@@ -248,6 +248,8 @@ class HoldingsTest(unittest.TestCase):
         self.assertEqual(kr["name"], "삼성전자")                 # 이름을 비워도 DART 기업명으로 채움
         self.assertTrue(any("잠정" in f["title"] for f in kr["filings"]))
         self.assertEqual(kr["qty"], 3)
+        self.assertEqual(kr["news"][0]["title"], "삼성전자, HBM4 공급 계약 체결")   # 네이버 뉴스, 태그 제거
+        self.assertEqual(kr["news"][0]["source"], "example.co.kr")
 
     def test_failures_are_per_part(self):
         r = self.run_h([{"market": "US", "code": "NVDA"}], env={})

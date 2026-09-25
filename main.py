@@ -116,7 +116,7 @@ def main(argv=None) -> int:
         if args.sample:
             from paper.fixture_http import FixtureHttp
             http = FixtureHttp()
-            env = {"KRX_API_KEY": "sample", "ECOS_API_KEY": "sample", "FRED_API_KEY": "sample", "DART_API_KEY": "sample", "FINNHUB_API_KEY": "sample",
+            env = {"KRX_API_KEY": "sample", "ECOS_API_KEY": "sample", "FRED_API_KEY": "sample", "DART_API_KEY": "sample", "FINNHUB_API_KEY": "sample", "NAVER_CLIENT_ID": "sample", "NAVER_CLIENT_SECRET": "sample",
                    "KIS_APP_KEY": "sample", "KIS_APP_SECRET": "sample"}
         else:
             http, env = HttpClient.from_config(cfg.get("http")), dict(os.environ)

@@ -13,12 +13,14 @@ from paper.models import SectionResult
 from .base import KST, BaseCollector
 
 TAG_RE = re.compile(r"<[^>]+>")
+INLINE_TAG_RE = re.compile(r"</?(b|strong|em|i|u|span|font)\b[^>]*>", re.I)   # 강조 태그는 공백 없이 제거
 WS_RE = re.compile(r"\s+")
 SENT_RE = re.compile(r"(.+?(?:다\.|[.!?])(?=\s|$))")
 
 
 def clean(text: str | None) -> str:
-    return WS_RE.sub(" ", html.unescape(TAG_RE.sub(" ", html.unescape(text or "")))).strip()
+    text = INLINE_TAG_RE.sub("", html.unescape(text or ""))
+    return WS_RE.sub(" ", html.unescape(TAG_RE.sub(" ", text))).strip()
 
 
 def first_sentence(text: str, limit: int = 160) -> str:

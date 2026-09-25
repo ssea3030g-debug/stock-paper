@@ -1,7 +1,7 @@
 """내 종목: 앱에서 추가한 보유 종목별 시세·뉴스·실적.
 
 입력은 앱 저장소(db)의 holdings 목록을 매일 아침 파일로 내려받은 것 (main.py --holdings).
-  국내(KR) : 시세 Yahoo(.KS→.KQ) · 뉴스 Google 뉴스 RSS(허용 시) 또는 오늘 수집한 RSS 에서 회사명 검색
+  국내(KR) : 시세 Yahoo(.KS→.KQ) · 뉴스 네이버 뉴스 검색 API(키 있을 때) 또는 오늘 수집한 RSS 에서 회사명 검색
              · 실적/공시 OpenDART(최근 정기보고서·잠정실적)
   미국(US) : 시세 Yahoo · 뉴스 Finnhub company-news · 실적 Finnhub(다가오는 발표일, 최근 4분기)
 어느 한 항목이 실패해도 그 종목의 나머지 정보는 채운다.
@@ -14,7 +14,6 @@ import json
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
-from urllib.parse import quote
 
 from paper import yahoo
 
@@ -26,7 +25,7 @@ FINNHUB = "https://finnhub.io/api/v1"
 DART_LIST = "https://opendart.fss.or.kr/api/list.json"
 DART_CORP = "https://opendart.fss.or.kr/api/corpCode.xml"
 DART_VIEW = "https://dart.fss.or.kr/dsaf001/main.do?rcpNo={no}"
-GNEWS = "https://news.google.com/rss/search?q={q}&hl=ko&gl=KR&ceid=KR:ko"
+NAVER_NEWS = "https://openapi.naver.com/v1/search/news.json"   # 네이버 공식 검색 API (Google 뉴스는 robots.txt 로 금지)
 CACHE = Path(__file__).resolve().parent.parent / "output" / "data" / "dart_corpcodes.json"
 FILING_WORDS = ("잠정", "영업실적", "매출액또는손익구조", "분기보고서", "반기보고서", "사업보고서", "실적")
 
@@ -106,18 +105,20 @@ class HoldingsCollector(BaseCollector):
                              "published": ts.isoformat(timespec="minutes"), "description": clean(a.get("summary"))[:400],
                              "lang": "en"})
         else:
-            try:
-                r = self.ctx.http.request("GET", GNEWS.format(q=quote(f'"{info["name"]}"')), check_robots=True)
-                for e in parse_feed(r.content):
-                    d = parse_date(e.get("date"))
+            cid, secret = self.key("NAVER_CLIENT_ID"), self.key("NAVER_CLIENT_SECRET")
+            if cid and secret:
+                data = self.ctx.http.get_json(NAVER_NEWS, params={"query": info["name"], "display": 30, "sort": "date"},
+                                              headers={"X-Naver-Client-Id": cid, "X-Naver-Client-Secret": secret})
+                for it in data.get("items") or []:
+                    d = parse_date(it.get("pubDate"))
                     if d and start <= d <= end:
-                        title = clean(e.get("title"))
-                        src = title.rsplit(" - ", 1)[-1] if " - " in title else "Google 뉴스"
-                        arts.append({"title": title.rsplit(" - ", 1)[0], "url": e.get("link", ""), "source": src,
+                        url = it.get("originallink") or it.get("link", "")
+                        host = url.split("/")[2].replace("www.", "") if url.count("/") >= 2 else "네이버 뉴스"
+                        arts.append({"title": clean(it.get("title")), "url": url, "source": host,
                                      "published": d.astimezone(KST).isoformat(timespec="minutes"),
-                                     "description": clean(e.get("description"))[:400], "lang": "ko"})
-            except Exception as e:  # noqa: BLE001 — Google 뉴스가 막혀 있으면 오늘 RSS 에서 찾는다
-                self.log.info("Google 뉴스 사용 불가(%s) → 오늘 수집한 RSS 에서 검색", type(e).__name__)
+                                     "description": clean(it.get("description"))[:400], "lang": "ko"})
+            else:
+                self.log.info("NAVER_CLIENT_ID/SECRET 없음 → 오늘 수집한 RSS 에서 회사명으로 검색")
             if not arts:
                 names = {info["name"], info["name"].replace(" ", "")} | set(h.get("aliases") or [])
                 for a in self.cfg.get("news_pool") or []:

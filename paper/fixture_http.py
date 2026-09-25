@@ -34,6 +34,7 @@ DEFAULT_ROUTES = [
     ("opendart.fss.or.kr/api/list.json", None, "dart_list.json"),
     ("opendart.fss.or.kr/api/corpCode.xml", None, "dart_corpcode.zip"),
     ("opendart.fss.or.kr/api/document.xml", None, "dart_document.zip"),
+    ("openapi.naver.com/v1/search/news.json", None, "naver_news.json"),
     ("finnhub.io/api/v1/company-news", None, "finnhub_company_news.json"),
     ("finnhub.io/api/v1/calendar/earnings", None, "finnhub_calendar.json"),
     ("finnhub.io/api/v1/stock/earnings", None, "finnhub_stock_earnings.json"),
