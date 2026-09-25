@@ -173,3 +173,17 @@ class CalendarHolidayTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class YahooGapTest(unittest.TestCase):
+    def test_missing_previous_close_gives_no_change(self):
+        from paper import yahoo
+        from paper.fixture_http import FixtureHttp
+        http = FixtureHttp(routes=[("chart/", None, "yahoo_gap.json")])
+        dp = yahoo.last_close(http, "^KS11", "코스피", on_or_before=dt.date(2026, 9, 23))
+        self.assertAlmostEqual(dp.value, 3438.5)
+        self.assertIsNone(dp.change)                 # 9/21 과 비교하지 않음
+        self.assertIsNone(dp.change_pct)
+        self.assertEqual(dp.extra["prev_missing"], "2026-09-22")
+        dp2 = yahoo.last_close(http, "^KS11", "코스피", on_or_before=dt.date(2026, 9, 22))
+        self.assertEqual(dp2.as_of, "2026-09-21")    # 종가 없는 날은 건너뛰고 직전 값
