@@ -84,7 +84,7 @@ def render_issue(cfg: dict, bundle: dict, summary: dict, out_dir: Path, standalo
                 "refresh_trigger": (cfg.get("app") or {}).get("refresh_trigger_id", ""),
                 "refresh_after_min": (cfg.get("app") or {}).get("refresh_after_min", 30),
                 "stocks": stocks, "snapshot": bundle.get("holdings") or [], "sample": bool(bundle.get("sample")),
-                "names": name_lists()}
+                "names": name_lists(), "fx": usdkrw(results)}
     ear = [i for sec in ("korea_market", "us_market") for i in (results.get(sec) or {}).get("items", [])][:5]
 
     dates = set(archive_dates(out_dir, issue)) | {dt.date.fromisoformat(d) for d in (extra_archive or [])}
@@ -100,6 +100,14 @@ def render_issue(cfg: dict, bundle: dict, summary: dict, out_dir: Path, standalo
         stocks=stocks, rumors=rumors, app_data=app_data,
         show_disclaimer="disclaimer" in ids, collected_at=bundle.get("collected_at", "")[:16].replace("T", " "),
     )
+
+
+def usdkrw(results: dict) -> dict | None:
+    """내 종목 원화 환산용 원/달러 환율 (신문 지표에서, 기준 시점·출처 포함)."""
+    for i in (results.get("indicators") or {}).get("items", []):
+        if (i.get("extra") or {}).get("id") == "usdkrw" and i.get("value"):
+            return {"rate": i["value"], "as_of": i.get("as_of"), "source": i.get("source")}
+    return None
 
 
 def name_lists() -> dict:

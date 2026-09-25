@@ -26,7 +26,13 @@
     if (v == null || isNaN(v)) return "—";
     return Number(v).toLocaleString("ko-KR", { minimumFractionDigits: d, maximumFractionDigits: d });
   }
-  function money(v, cur) { return v == null ? "—" : (cur === "KRW" ? nf(v, 0) + "원" : "$" + nf(v, 2)); }
+  var FX = DATA.fx && DATA.fx.rate ? DATA.fx : null;   // 원/달러 환율 {rate, as_of, source} — 미국 종목 원화 환산
+  function usd(v) { return v == null ? "—" : "$" + nf(v, 2); }
+  function money(v, cur) {   // 내 종목 금액은 모두 원화로 (미국 종목은 환율 환산, 환율이 없으면 달러 그대로)
+    if (v == null) return "—";
+    if (cur === "KRW") return nf(v, 0) + "원";
+    return FX ? nf(v * FX.rate, 0) + "원" : usd(v);
+  }
   function dirc(v) { return v == null || v === 0 ? "flat" : (v > 0 ? "up" : "down"); }
   function pct(v) { return v == null ? "" : (v > 0 ? "+" : "") + nf(v, 2) + "%"; }
   function signed(v, d) { return v == null ? "—" : (v > 0 ? "▲" : v < 0 ? "▼" : "") + nf(Math.abs(v), d); }
@@ -104,7 +110,7 @@
       '<label class="wide" for="f-q">종목 이름 또는 코드<input id="f-q" autocomplete="off" spellcheck="false" placeholder="삼성전자, 넷플릭스, NFLX, 005930"></label>' +
       '<div class="wide" id="f-sug" role="listbox" aria-label="종목 후보" style="display:grid;gap:0"></div>' +
       '<label for="f-qty">보유 수량 (선택)<input id="f-qty" inputmode="decimal" autocomplete="off" placeholder="10"></label>' +
-      '<label for="f-avg">평균 단가 (선택)<input id="f-avg" inputmode="decimal" autocomplete="off" placeholder="원 / 달러"></label>' +
+      '<label for="f-avg">평균 단가 (선택)<input id="f-avg" inputmode="decimal" autocomplete="off" placeholder="국내 원 · 미국 달러"></label>' +
       '</div><button class="btn" type="submit">추가</button><p class="msg" id="f-msg" aria-live="polite"></p></form>';
   }
 
@@ -289,8 +295,10 @@
       esc((st && st.exchange) || (h.market === "KR" ? "국내" : "미국")) + " " + esc(h.code) + "</small></div>";
     if (p) {
       html += '<div class="p ' + dirc(p.change) + '">' + money(p.value, cur) + "</div>" +
-        '<div class="c ' + dirc(p.change) + '">' + (p.change == null ? "전일비 확인 불가" : signed(p.change, cur === "KRW" ? 0 : 2) + " (" + pct(p.change_pct) + ")") + "</div>" +
-        '<div class="sub">기준 ' + esc(p.as_of) + ' · <a href="' + esc(p.url) + '" target="_blank" rel="noopener">' + esc(p.source) + "</a></div>";
+        '<div class="c ' + dirc(p.change) + '">' + (p.change == null ? "전일비 확인 불가"
+          : (cur !== "KRW" && FX ? signed(p.change * FX.rate, 0) + "원" : signed(p.change, cur === "KRW" ? 0 : 2)) + " (" + pct(p.change_pct) + ")") + "</div>" +
+        '<div class="sub">기준 ' + esc(p.as_of) + ' · <a href="' + esc(p.url) + '" target="_blank" rel="noopener">' + esc(p.source) + "</a>" +
+        (cur !== "KRW" && FX ? "<br>" + usd(p.value) + " × 환율 " + nf(FX.rate, 2) + "원 (" + esc(FX.as_of || "") + " · " + esc(FX.source || "") + ")" : "") + "</div>";
     } else {
       html += '<p class="msg">' + (st ? "시세를 받지 못했습니다." : "이 종목 정보를 불러오는 중입니다. 1~2분 뒤 이 화면이 자동으로 바뀝니다.") + "</p>";
     }
@@ -299,7 +307,7 @@
     if (p) {
       var val = h.qty ? p.value * h.qty : null, g = h.qty && h.avg ? (p.value - h.avg) * h.qty : null;
       html += '<div class="kv"><div><b>보유 수량</b><span>' + (h.qty ? nf(h.qty, h.qty % 1 ? 2 : 0) + "주" : "—") + "</span></div>" +
-        "<div><b>평균 단가</b><span>" + money(h.avg, cur) + "</span></div>" +
+        "<div><b>평균 단가</b><span>" + money(h.avg, cur) + (cur !== "KRW" && FX && h.avg != null ? "<small> (" + usd(h.avg) + ")</small>" : "") + "</span></div>" +
         "<div><b>평가 금액</b><span>" + money(val, cur) + "</span></div>" +
         '<div><b>평가 손익</b><span class="' + dirc(g) + '">' + (g == null ? "—" : (g > 0 ? "+" : "") + money(g, cur)) + "</span></div>" +
         '<div><b>수익률</b><span class="' + dirc(g) + '">' + (g == null ? "—" : pct((p.value / h.avg - 1) * 100)) + "</span></div>" +
@@ -505,6 +513,12 @@
     };
   }
   function refreshQuotes() {
+    fetch("/api/quote?market=FX&code=USDKRW").then(function (r) { return r.ok ? r.json() : null; }).then(function (q) {
+      if (!q || !q.value) return;
+      var had = !!FX;
+      FX = { rate: q.value, as_of: (q.as_of || "").slice(0, 10) + " 최근값", source: q.source || "Yahoo Finance" };
+      if (!had || view.name === "list") render();
+    }).catch(function () { /* 신문에 실린 환율로 계속 */ });
     holdings.forEach(function (h) {
       if (!h.market || !h.code) return;
       fetch("/api/quote?market=" + encodeURIComponent(h.market) + "&code=" + encodeURIComponent(h.code))

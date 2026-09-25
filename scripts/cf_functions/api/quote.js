@@ -44,7 +44,9 @@ export async function onRequestGet({ request }) {
   const market = (url.searchParams.get("market") || "").toUpperCase();
   const code = (url.searchParams.get("code") || "").toUpperCase().slice(0, 20);
   if (!code || !/^[A-Z0-9.\-]{1,20}$/.test(code)) return err(400, "bad_request");
-  const symbols = market === "KR" ? [code + ".KS", code + ".KQ"] : [code.replace(/\./g, "-")];   // Yahoo 는 BRK.B 대신 BRK-B
+  if (market === "FX" && code !== "USDKRW") return err(400, "bad_request");
+  const symbols = market === "FX" ? ["KRW=X"]                                    // 원/달러 환율
+    : market === "KR" ? [code + ".KS", code + ".KQ"] : [code.replace(/\./g, "-")];   // Yahoo 는 BRK.B 대신 BRK-B
   for (const sym of symbols) {
     try {
       const q = await tryQuote(sym);
