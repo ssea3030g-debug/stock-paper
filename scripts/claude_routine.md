@@ -9,6 +9,7 @@ Routine(예약 작업)에는 아래 "지시문" 블록이 그대로 들어가 �
   api.stlouisfed.org, openapi.koreainvestment.com, www.yna.co.kr, www.hankyung.com, www.mk.co.kr
 - 환경 변수: ECOS_API_KEY, FRED_API_KEY, KRX_API_KEY (, KIS_APP_KEY, KIS_APP_SECRET)
 - ANTHROPIC_API_KEY 는 필요 없음 — 요약은 예약 세션의 Claude 가 직접 씀
+- 저장소는 공개(Public)여야 함 — 예약 세션에는 비공개 저장소를 여는 도구가 없음
 
 ---
 
@@ -16,8 +17,7 @@ Routine(예약 작업)에는 아래 "지시문" 블록이 그대로 들어가 �
 
 아침증권신문 오늘 호를 발행해 줘. 순서대로 하고, 단계가 실패해도 가능한 데까지 진행해.
 
-1. `add_repo` 도구로 ssea3030g-debug/stock-paper 저장소를 이 세션에 추가하고(read 권한),
-   안내대로 `git clone --depth 1 https://github.com/ssea3030g-debug/stock-paper /home/user/stock-paper` 한 뒤 그 폴더로 이동해.
+1. `git clone --depth 1 https://github.com/ssea3030g-debug/stock-paper /home/user/stock-paper` 한 뒤 그 폴더로 이동해. (공개 저장소라 인증이 필요 없어. 저장소 추가 도구는 쓰지 마.)
 2. `python main.py --collect-only` 를 실행해. 마지막 줄에 출력되는 프롬프트 파일 경로를 기억해.
 3. `output/data/<오늘>.json` 에서 korea_market, us_market, indicators 의 ok 가 모두 false 이면
    **게시하지 말고** 여기서 멈춰. 로그의 실패 원인(네트워크 차단, API 키 없음 등)을 한두 줄로 보고해.
@@ -25,6 +25,7 @@ Routine(예약 작업)에는 아래 "지시문" 블록이 그대로 들어가 �
    요약 JSON 을 `output/data/<오늘>.summary.json` 에 써.
    - 데이터에 없는 사실·숫자·원인·전망은 절대 쓰지 마. 투자 권유 표현 금지.
    - value 가 null 인 항목은 "데이터 없음"이야. 언급하지 않거나 확인되지 않았다고만 써.
+   - change 가 null 인 항목은 전일 대비 변동을 쓰지 마.
    - 뉴스가 하나도 없으면 news 는 빈 배열로 둬.
 5. Artifact 도구로 https://claude.ai/artifact/Dbf9GBiQyPYRkdqetr9wci 를 먼저 read 한 다음,
    같은 URL 의 파일 목록(list, scope: files)을 조회해서 `YYYY-MM-DD.html` 형식 파일들의 날짜를 쉼표로 이어 붙여.
