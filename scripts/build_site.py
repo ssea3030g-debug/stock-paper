@@ -6,7 +6,7 @@ site/ 에 이미 있는 지난 호는 그대로 두고, --src 의 YYYY-MM-DD.htm
   index.html          가장 최근 호 (앱을 열면 바로 보임)
   YYYY-MM-DD.html     각 호
   archive.html        지난 호 목록
-  manifest.webmanifest, sw.js, icon-*.png, _headers, robots.txt
+  manifest.webmanifest, sw.js, icon-*.png, _headers, robots.txt, .well-known/assetlinks.json
   functions/api/      내 종목 저장(holdings)·시세 새로고침(quote) — site.storage 가 true 일 때만
 를 쓴다. 각 호 HTML 의 <head> 에 매니페스트·아이콘·서비스 워커 연결을 넣고,
 site.storage 가 true 면 앱 데이터에 site_storage 플래그를 넣어 앱이 claude.ai db 대신
@@ -75,6 +75,8 @@ HEADERS = """/*
   Content-Type: application/manifest+json
 /api/*
   Cache-Control: no-store
+/.well-known/assetlinks.json
+  Content-Type: application/json
 """
 
 
@@ -148,6 +150,11 @@ def build(cfg: dict, src: Path, site_dir: Path) -> list[str]:
     (site_dir / "robots.txt").write_text("User-agent: *\nDisallow: /\n", encoding="utf-8")   # 개인용 — 검색 노출 막기
     for n in (180, 192, 512):
         shutil.copyfile(ROOT / "static" / f"icon-{n}.png", site_dir / f"icon-{n}.png")
+    # APK(PWABuilder TWA)가 주소창 없이 열리도록 도메인 소유 확인 파일
+    links = ROOT / "static" / "assetlinks.json"
+    if links.exists():
+        (site_dir / ".well-known").mkdir(exist_ok=True)
+        shutil.copyfile(links, site_dir / ".well-known" / "assetlinks.json")
 
     fn_dst = site_dir / "functions"
     if storage:

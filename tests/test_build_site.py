@@ -34,6 +34,7 @@ class BuildSiteTest(unittest.TestCase):
             self.assertEqual((site / "2026-09-24.html").read_text(encoding="utf-8").count('rel="manifest"'), 1)
             self.assertTrue((site / "functions" / "api" / "holdings.js").exists())
             self.assertTrue((site / "functions" / "api" / "quote.js").exists())
+            self.assertTrue(json.loads((site / ".well-known" / "assetlinks.json").read_text(encoding="utf-8")))
 
     def test_site_storage_flag_injected_once(self):
         page = ('<!doctype html><html><head><title>t</title></head><body>'
