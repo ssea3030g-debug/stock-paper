@@ -126,8 +126,11 @@ class NewsCollector(BaseCollector):
         limit = self.cfg.get("max_collect", 30)
         for i, a in enumerate(articles[:limit], 1):
             a["id"] = f"n{i}"
+        for i, a in enumerate(articles[limit:], limit + 1):
+            a["id"] = f"n{i}"
         return SectionResult(id=self.id, ok=bool(sources), items=articles[:limit],
-                             data={"window": [start.isoformat(timespec="minutes"), end.isoformat(timespec="minutes")]},
+                             data={"window": [start.isoformat(timespec="minutes"), end.isoformat(timespec="minutes")],
+                                   "pool": articles},   # 종목 뉴스·찌라시 검색용 전체 기사 (지면에는 items 만)
                              error="; ".join(errors) or None, sources=sources)
 
     def _finnhub(self, feed) -> list[dict]:

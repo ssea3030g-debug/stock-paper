@@ -66,7 +66,8 @@ def collect(cfg: dict, ctx: Context, holdings: list | None = None) -> dict:
             log.warning("[%s] 알 수 없는 수집기 — 건너뜀", cid)
             continue
         log.info("[%s] 수집 시작", cid)
-        pool = (results.get("news") or {}).get("items") or []
+        news_res = results.get("news") or {}
+        pool = (news_res.get("data") or {}).get("pool") or news_res.get("items") or []
         if cid == "disclosures":   # 내 종목 공시를 우선 보여 주기 위해 목록을 함께 넘김
             ccfg = {**ccfg, "watchlist": [{"code": h["code"], "market": "KOSPI"} for h in holdings or []
                                           if str(h.get("market", "")).upper() == "KR"]}

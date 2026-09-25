@@ -378,7 +378,18 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
 </section>
 <section class="sec s-holdings" aria-label="내 종목">
   <div class="kicker"><h2>내 종목</h2><span class="unit">종가 · 전일 대비</span></div>
-  <p class="nodata">위쪽 ‘내 종목’ 탭에서 보유 종목을 추가하면 다음 아침 신문부터 여기에 나옵니다.</p>
+  <div class="tbl-wrap">
+  <table class="quotes">
+    <thead><tr><th>종목</th><th>종가</th><th>등락률</th></tr></thead>
+    <tbody>
+    <tr><td class="name">삼성전자<small>코스피 005930</small></td>
+      <td class="val">285,500</td>
+      <td class="up">+3.25%</td>
+    </tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="src">종목을 누르려면 위쪽 ‘내 종목’ 탭을 여세요. 뉴스·실적·손익이 있습니다.</p>
 </section>
 <section class="sec s-news" aria-label="오늘의 큰 뉴스 3">
   <div class="kicker"><h2>오늘의 큰 뉴스 3</h2><span class="unit">최근 24시간 · 시장 파장 순</span></div>
@@ -402,16 +413,16 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
   <div class="kicker"><h2>찌라시·풍문 레이더</h2><span class="unit">미확인 보도 · 풍문 해명 공시</span></div>
   <p class="warnline">사실로 확인되지 않은 이야기입니다. 원문과 회사 공시로 직접 확인하세요.</p>
   <ul class="rumor">
-    <li><span class="st c">회사 확인·검토 중</span><h3><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260923800547" target="_blank" rel="noopener">미래에셋증권 — 풍문또는보도에대한해명(미확정)</a></h3><p>미래에셋증권·토스가 일본 증권사를 인수한다는 한국경제 보도에 대해, 미래에셋증권은 일본 리테일 시장 진출을 위해 현지 증권사 인수를 검토 중이나 확정된 사항은 없다고 재공시했다.</p>
-      <span class="m">미래에셋증권 공시 · 2026-09-23</span></li>
-    <li><span class="st c">회사 확인·검토 중</span><h3><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260923800537" target="_blank" rel="noopener">비비안 — 풍문또는보도에대한해명(미확정)</a></h3><p>비비안이 용산 사옥·부산 광복동 부동산 매각을 추진한다는 조선비즈 보도에 대해, 회사는 삼정KPMG를 주관사로 선정해 매각을 검토 중이나 거래 상대방·가격·일정은 확정되지 않았다고 밝혔다.</p>
-      <span class="m">비비안 공시 · 2026-09-23</span></li>
-    <li><span class="st c">회사 확인·검토 중</span><h3><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260923800166" target="_blank" rel="noopener">동아지질 — 풍문또는보도에대한해명(미확정)</a></h3><p>동아지질 최대주주의 지분 매각 추진설(서울경제 보도)에 대해 회사는 최대주주가 여러 전략적 방안을 검토하는 것으로 알고 있으나 결정된 사항은 없다고 밝혔다.</p>
-      <span class="m">동아지질 공시 · 2026-09-23</span></li>
-    <li><span class="st c">회사 확인·검토 중</span><h3><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260923800384" target="_blank" rel="noopener">코오롱글로벌 — 풍문또는보도에대한해명(미확정)</a></h3><p>코오롱글로벌이 해상풍력 핵심 프로젝트를 판다는 더벨 보도에 대해, 회사는 사업 포트폴리오 차원에서 내부 검토 중이며 확정된 바 없다고 밝혔다.</p>
-      <span class="m">코오롱글로벌 공시 · 2026-09-23</span></li>
-    <li><span class="st c">회사 확인·검토 중</span><h3><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260923800244" target="_blank" rel="noopener">LS — 풍문또는보도에대한해명(미확정)(자회사의 주요경영사항)</a></h3><p>LS가 영국에 세계 최대 초고압케이블 공장을 짓는다는 2024년 보도에 대해, 회사는 영국 정부 등과 협의 중이며 확정되면 다시 공시하겠다고 밝혔다.</p>
-      <span class="m">LS 공시 · 2026-09-23</span></li>
+    <li><span class="st c">회사 확인·검토 중</span><h3><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260923800547" target="_blank" rel="noopener">미래에셋증권 — 미래에셋ㆍ토스, 日 증권사 인수한다</a></h3><p>미래에셋증권·토스가 일본 증권사를 인수한다는 한국경제 보도에 대해, 미래에셋증권은 일본 리테일 시장 진출을 위해 현지 증권사 인수를 검토 중이나 확정된 사항은 없다고 재공시했다.</p>
+      <span class="m">한국경제 보도 · 미래에셋증권 해명 공시 · 2026-09-23</span></li>
+    <li><span class="st c">회사 확인·검토 중</span><h3><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260923800537" target="_blank" rel="noopener">비비안 — 비비안, 용산 사옥·부산 광복동 매각 추진… 주관사 삼정KPMG</a></h3><p>비비안이 용산 사옥·부산 광복동 부동산 매각을 추진한다는 조선비즈 보도에 대해, 회사는 삼정KPMG를 주관사로 선정해 매각을 검토 중이나 거래 상대방·가격·일정은 확정되지 않았다고 밝혔다.</p>
+      <span class="m">조선비즈 보도 · 비비안 해명 공시 · 2026-09-23</span></li>
+    <li><span class="st c">사실로 확인</span><h3><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260922800366" target="_blank" rel="noopener">KC그린홀딩스 — 워크아웃’ KC그린홀딩스, 자회사 두 곳도 나란히 매물로</a></h3><p>워크아웃 중인 KC그린홀딩스가 자회사 두 곳을 매물로 내놨다는 매일경제 보도에 대해, 회사는 KC글라스 매각이 완료됐고 KC유리자원은 파산 절차가 진행 중이라고 확정 공시했다.</p>
+      <span class="m">매일경제 보도 · KC그린홀딩스 해명 공시 · 2026-09-22</span></li>
+    <li><span class="st c">회사 확인·검토 중</span><h3><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260923800166" target="_blank" rel="noopener">동아지질 — 최대주주 지분매각 추진</a></h3><p>동아지질 최대주주의 지분 매각 추진설(서울경제 보도)에 대해 회사는 최대주주가 여러 전략적 방안을 검토하는 것으로 알고 있으나 결정된 사항은 없다고 밝혔다.</p>
+      <span class="m">서울경제 보도 · 동아지질 해명 공시 · 2026-09-23</span></li>
+    <li><span class="st c">회사 확인·검토 중</span><h3><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260923800384" target="_blank" rel="noopener">코오롱글로벌 — 코오롱글로벌, 해상풍력 핵심 프로젝트 판다</a></h3><p>코오롱글로벌이 해상풍력 핵심 프로젝트를 판다는 더벨 보도에 대해, 회사는 사업 포트폴리오 차원에서 내부 검토 중이며 확정된 바 없다고 밝혔다.</p>
+      <span class="m">더벨 보도 · 코오롱글로벌 해명 공시 · 2026-09-23</span></li>
   </ul>
 </section>
 <section class="sec s-disclosures" aria-label="주요 공시">
@@ -461,14 +472,14 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
 
 <footer class="colophon">
   <p class="disclaimer"><strong>투자 판단은 본인 책임입니다.</strong> 본 신문은 공개된 데이터를 자동으로 수집·정리한 참고 자료이며, 특정 종목의 매수·매도를 권유하지 않습니다. 투자 판단과 그 결과에 대한 책임은 투자자 본인에게 있습니다.</p>
-  <p class="imprint">아침증권신문 · 제1호 · 2026년 9월 25일 금요일 · 매일 오전 7시(KST) 자동 발행 · 수집 2026-09-25 22:48 · 모든 수치에 기준 시점과 출처를 함께 표기합니다.</p>
+  <p class="imprint">아침증권신문 · 제1호 · 2026년 9월 25일 금요일 · 매일 오전 7시(KST) 자동 발행 · 수집 2026-09-25 22:59 · 모든 수치에 기준 시점과 출처를 함께 표기합니다.</p>
 </footer>
 </div>
 
 <div id="v-mine" role="tabpanel" aria-labelledby="t-mine" hidden>
   <div class="app" id="app"></div>
 </div>
-<script type="application/json" id="stock-data">{"collected_at": "2026-09-25T22:48:44+09:00", "issue_date": "2026-09-25", "sample": false, "snapshot": [], "stocks": {}}</script>
+<script type="application/json" id="stock-data">{"collected_at": "2026-09-25T22:59:21+09:00", "issue_date": "2026-09-25", "sample": false, "snapshot": [{"avg": 200000, "code": "005930", "market": "KR", "name": "\uc0bc\uc131\uc804\uc790", "qty": 10}], "stocks": {"KR-005930": {"code": "005930", "earnings": {"note": "\uad6d\ub0b4 \uae30\uc5c5\uc740 \uc2e4\uc801 \ubc1c\ud45c \uc608\uc815\uc77c\uc744 \ubbf8\ub9ac \uacf5\uc2dc\ud558\uc9c0 \uc54a\ub294 \uacbd\uc6b0\uac00 \ub9ce\uc544, \ucd5c\uadfc \uc2e4\uc801 \uad00\ub828 \uacf5\uc2dc\ub97c \ubcf4\uc5ec \uc90d\ub2c8\ub2e4.", "source": "\uae08\uc735\uac10\ub3c5\uc6d0 DART"}, "exchange": "\ucf54\uc2a4\ud53c", "filings": [{"date": "2026-08-14", "title": "\ubc18\uae30\ubcf4\uace0\uc11c (2026.06)", "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260814003699"}, {"date": "2026-07-30", "title": "\uc5f0\uacb0\uc7ac\ubb34\uc81c\ud45c\uae30\uc900\uc601\uc5c5(\uc7a0\uc815)\uc2e4\uc801(\uacf5\uc815\uacf5\uc2dc)", "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260730800077"}, {"date": "2026-07-07", "title": "\uc5f0\uacb0\uc7ac\ubb34\uc81c\ud45c\uae30\uc900\uc601\uc5c5(\uc7a0\uc815)\uc2e4\uc801(\uacf5\uc815\uacf5\uc2dc)", "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260707800004"}, {"date": "2026-05-15", "title": "\ubd84\uae30\ubcf4\uace0\uc11c (2026.03)", "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260515002181"}, {"date": "2026-04-30", "title": "\uc5f0\uacb0\uc7ac\ubb34\uc81c\ud45c\uae30\uc900\uc601\uc5c5(\uc7a0\uc815)\uc2e4\uc801(\uacf5\uc815\uacf5\uc2dc)", "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260430800083"}], "key": "KR-005930", "market": "KR", "name": "\uc0bc\uc131\uc804\uc790", "news": [{"lang": "ko", "published": "2026-09-24T17:19+09:00", "source": "\ub9e4\uc77c\uacbd\uc81c \uc99d\uad8c", "summary": "\uc99d\uad8c\uac00\uc758 \uc0bc\uc131\uc804\uc790 \ub0b4\ub144 \uc2e4\uc801 \uc804\ub9dd\uc774 \ud06c\uac8c \uc5c7\uac08\ub9ac\uace0 \uc788\ub2e4. \ub0b4\ub144 \uc601\uc5c5\uc774\uc775 \uc804\ub9dd\uc740 \uc720\uc548\ud0c0\uc99d\uad8c 590\uc870\uc6d0, \ud0a4\uc6c0\uc99d\uad8c 346\uc870\uc6d0\uc73c\ub85c \ucc28\uc774\uac00 \ud06c\uba70, HBM \uacf5\uae09 \ubd80\uc871\uc774 \uc5bc\ub9c8\ub098 \uc774\uc5b4\uc9c8\uc9c0\uac00 \uad00\uac74\uc73c\ub85c \uaf3d\ud614\ub2e4.", "title": "\u201c\uc0bc\uc131\uc804\uc790 \ub0b4\ub144 63\ub9cc\uc6d0 vs 27\ub9cc\uc6d0\u201d\u2026\uc99d\uad8c\uac00 \uc804\ub9dd \uadf9\uacfc \uadf9, \ub204\uad6c \ub9d0\uc774 \ub9de\ub098", "url": "https://www.mk.co.kr/news/stock/12160935"}], "picked": true, "price": {"as_of": "2026-09-23 15:30 KST", "change": 9000.0, "change_pct": 3.25497287522604, "currency": "KRW", "high52": 374500.0, "low52": 82400.0, "source": "Yahoo Finance", "url": "https://finance.yahoo.com/quote/005930.KS", "value": 285500.0}}}}</script>
 <script>
 
 (function () {
@@ -531,7 +542,7 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
       pl = ' · <span class="' + dirc(g) + '">' + (g > 0 ? "+" : "") + money(g, cur) + " (" + pct(r) + ")</span>";
     }
     var right = p ? '<span class="l2 r ' + dirc(p.change_pct) + '">' + (p.change_pct == null ? "전일비 없음" : pct(p.change_pct)) + "</span>"
-                  : '<span class="l2 r">' + (st ? "시세 없음" : "내일 아침 반영") + "</span>";
+                  : '<span class="l2 r">' + (st ? "시세 없음" : "1시간 안에 채워짐") + "</span>";
     return '<li><button type="button" class="row" data-id="' + esc(h.id) + '">' +
       '<span class="nm">' + esc(h.name || (st && st.name) || h.code) + "<small>" +
       esc((st && st.exchange) || (h.market === "KR" ? "국내" : "미국")) + " " + esc(h.code) + "</small></span>" +
@@ -585,7 +596,7 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
     var btn = ev.target.querySelector("button");
     btn.disabled = true;
     db.doc("holdings/" + keyOf(h)).set(h).then(function () {
-      flash = { text: (h.name || code) + " 추가했습니다. " + (DATA.stocks[keyOf(h)] ? "" : "시세·뉴스·실적은 내일 아침 발행 때 채워집니다."), err: false };
+      flash = { text: (h.name || code) + " 추가했습니다. " + (DATA.stocks[keyOf(h)] ? "" : "시세·뉴스·실적은 1시간 안에 채워집니다. 바로 보려면 Claude 채팅에 ‘갱신’이라고 보내세요."), err: false };
       renderList();
     }).catch(function (e) {
       btn.disabled = false;
@@ -605,7 +616,7 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
         '<div class="c ' + dirc(p.change) + '">' + (p.change == null ? "전일비 확인 불가" : signed(p.change, cur === "KRW" ? 0 : 2) + " (" + pct(p.change_pct) + ")") + "</div>" +
         '<div class="sub">기준 ' + esc(p.as_of) + ' · <a href="' + esc(p.url) + '" target="_blank" rel="noopener">' + esc(p.source) + "</a></div>";
     } else {
-      html += '<p class="msg">' + (st ? "시세를 받지 못했습니다." : "이 종목 정보는 내일 아침 발행 때 채워집니다.") + "</p>";
+      html += '<p class="msg">' + (st ? "시세를 받지 못했습니다." : "이 종목 정보는 1시간 안에 채워집니다. 바로 보려면 Claude 채팅에 ‘갱신’이라고 보내세요.") + "</p>";
     }
     html += "</div>";
 

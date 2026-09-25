@@ -59,7 +59,7 @@
       pl = ' · <span class="' + dirc(g) + '">' + (g > 0 ? "+" : "") + money(g, cur) + " (" + pct(r) + ")</span>";
     }
     var right = p ? '<span class="l2 r ' + dirc(p.change_pct) + '">' + (p.change_pct == null ? "전일비 없음" : pct(p.change_pct)) + "</span>"
-                  : '<span class="l2 r">' + (st ? "시세 없음" : "내일 아침 반영") + "</span>";
+                  : '<span class="l2 r">' + (st ? "시세 없음" : "1시간 안에 채워짐") + "</span>";
     return '<li><button type="button" class="row" data-id="' + esc(h.id) + '">' +
       '<span class="nm">' + esc(h.name || (st && st.name) || h.code) + "<small>" +
       esc((st && st.exchange) || (h.market === "KR" ? "국내" : "미국")) + " " + esc(h.code) + "</small></span>" +
@@ -113,7 +113,7 @@
     var btn = ev.target.querySelector("button");
     btn.disabled = true;
     db.doc("holdings/" + keyOf(h)).set(h).then(function () {
-      flash = { text: (h.name || code) + " 추가했습니다. " + (DATA.stocks[keyOf(h)] ? "" : "시세·뉴스·실적은 내일 아침 발행 때 채워집니다."), err: false };
+      flash = { text: (h.name || code) + " 추가했습니다. " + (DATA.stocks[keyOf(h)] ? "" : "시세·뉴스·실적은 1시간 안에 채워집니다. 바로 보려면 Claude 채팅에 ‘갱신’이라고 보내세요."), err: false };
       renderList();
     }).catch(function (e) {
       btn.disabled = false;
@@ -133,7 +133,7 @@
         '<div class="c ' + dirc(p.change) + '">' + (p.change == null ? "전일비 확인 불가" : signed(p.change, cur === "KRW" ? 0 : 2) + " (" + pct(p.change_pct) + ")") + "</div>" +
         '<div class="sub">기준 ' + esc(p.as_of) + ' · <a href="' + esc(p.url) + '" target="_blank" rel="noopener">' + esc(p.source) + "</a></div>";
     } else {
-      html += '<p class="msg">' + (st ? "시세를 받지 못했습니다." : "이 종목 정보는 내일 아침 발행 때 채워집니다.") + "</p>";
+      html += '<p class="msg">' + (st ? "시세를 받지 못했습니다." : "이 종목 정보는 1시간 안에 채워집니다. 바로 보려면 Claude 채팅에 ‘갱신’이라고 보내세요.") + "</p>";
     }
     html += "</div>";
 

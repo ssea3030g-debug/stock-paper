@@ -393,7 +393,7 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
   {%- if rumors %}
   <ul class="rumor">
     {%- for r in rumors %}
-    <li><span class="st {{ 'd' if r.status == '회사 부인' else ('c' if r.status in ('회사 확인·검토 중', '회사 해명 공시', '조회공시') else 'u') }}">{{ r.status }}</span><h3><a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.title }}</a></h3>
+    <li><span class="st {{ 'd' if r.status == '회사 부인' else ('c' if r.status in ('회사 확인·검토 중', '회사 해명 공시', '조회공시', '사실로 확인') else 'u') }}">{{ r.status }}</span><h3><a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.title }}</a></h3>
       {%- if r.summary %}<p>{{ r.summary }}</p>{% endif %}
       <span class="m">{{ r.source }} · {{ r.date | replace('T', ' ') }}</span></li>
     {%- endfor %}

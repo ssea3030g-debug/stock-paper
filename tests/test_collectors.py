@@ -273,3 +273,5 @@ class RumorsTest(unittest.TestCase):
         f = r.data["filings"]
         self.assertEqual(f[0]["kind"], "해명")
         self.assertEqual(f[0]["rid"], "f1")
+        self.assertEqual(f[0]["headline"], "샘플반도체, 마곡 데이터센터 투자")   # 공시 제목 대신 소문 내용
+        self.assertEqual(f[0]["media"], "샘플경제")

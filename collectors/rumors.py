@@ -79,10 +79,16 @@ class RumorsCollector(BaseCollector):
                     no = f["url"].rsplit("=", 1)[-1]
                     r = self.ctx.http.request("GET", DOC_URL, params={"crtfc_key": key, "rcept_no": no})
                     f["detail"] = filing_detail(r.content)
+                    m = re.search(r"풍문 또는 보도의 내용\s*(.+?)\s*2\.\s*풍문 또는 보도의 매체\s*(.+?)\s*3\.", f["detail"])
+                    if m:
+                        f["headline"] = re.sub(r"\s*(언론)?\s*보도\s*관련\s*$", "", m.group(1)).strip(" '\"‘’“”")
+                        f["media"] = m.group(2).strip()
                 except Exception as e:  # noqa: BLE001
                     self.log.info("공시 본문 읽기 실패 %s: %s", f["corp"], type(e).__name__)
         else:
             errors.append("DART_API_KEY 없음 (해명 공시 생략)")
+        # 소문 내용을 읽어 낸 해명·답변 공시만 남긴다 (단순 시황변동 조회공시는 찌라시가 아님)
+        filings = [f for f in filings if f.get("headline")]
         for i, f in enumerate(filings, 1):
             f["rid"] = f"f{i}"
         limit = self.cfg.get("max_collect", 15)

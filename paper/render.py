@@ -121,13 +121,16 @@ def build_rumors(results: dict, summary: dict, limit: int) -> list[dict]:
     for s in summary.get("rumors") or []:
         src = reports.get(s["id"]) or filings.get(s["id"])
         if src:
-            title = f"{src['corp']} — {src['title']}" if s["id"] in filings else src.get("title")
-            out.append({"title": title, "url": src.get("url"), "source": src.get("source") or
-                        f"{src.get('corp')} 공시", "date": (src.get("published") or src.get("date") or "")[:16],
+            is_f = s["id"] in filings
+            title = f"{src['corp']} — {src.get('headline') or src['title']}" if is_f else src.get("title")
+            source = f"{src.get('media') or '언론'} 보도 · {src['corp']} 해명 공시" if is_f else src.get("source")
+            out.append({"title": title, "url": src.get("url"), "source": source,
+                        "date": (src.get("published") or src.get("date") or "")[:16],
                         "summary": s["summary"], "status": s["status"], "kind": "filing" if s["id"] in filings else "report"})
     if not out and not summary.get("rumors"):
         for f in filings.values():
-            out.append({"title": f"{f['corp']} — {f['title']}", "url": f["url"], "source": "DART", "date": f["date"],
+            out.append({"title": f"{f['corp']} — {f.get('headline') or f['title']}", "url": f["url"],
+                        "source": f"{f.get('media') or '언론'} 보도 · 회사 해명 공시", "date": f["date"],
                         "summary": "", "status": "회사 해명 공시" if f["kind"] == "해명" else "조회공시", "kind": "filing"})
         for x in reports.values():
             out.append({"title": x["title"], "url": x["url"], "source": x["source"], "date": x["published"][:16],

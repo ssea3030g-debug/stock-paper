@@ -37,7 +37,7 @@ RULES = """당신은 한국어 증권 신문의 편집장입니다. 아래 [데�
 - holdings: 종목마다 그 회사 주가에 직접 영향을 줄 기사 최대 {holding_news}개(실적·가이던스·대형 계약·규제·소송·경영진·제품 발표 우선,
   단순 시세 해설·'살까 말까' 류 기사는 제외). 적당한 기사가 없으면 빈 배열.
 - rumors: 찌라시·풍문 후보(reports 의 rid, filings 의 rid) 중 파장이 큰 것 최대 {rumor_items}개.
-  status 는 데이터로만 판단: 해명 공시가 부인하면 "회사 부인", 검토 중·미확정이라고 하면 "회사 확인·검토 중", 그 밖엔 "미확인".
+  status 는 데이터로만 판단: 해명 공시가 부인하면 "회사 부인", 검토 중·미확정이라고 하면 "회사 확인·검토 중", 확정 공시로 사실이라고 하면 "사실로 확인", 그 밖엔 "미확인".
   summary 는 '무슨 소문(보도)인지'를 한두 문장으로. 사실처럼 단정하지 말고 '~라는 보도', '~설' 형태로 쓰세요.
 
 출력 형식 (JSON 하나만 출력)
@@ -67,7 +67,7 @@ SCHEMA = {
             "required": ["key", "news"], "additionalProperties": False}},
         "rumors": {"type": "array", "items": {"type": "object", "properties": {
             "id": {"type": "string"}, "summary": {"type": "string"},
-            "status": {"type": "string", "enum": ["미확인", "회사 부인", "회사 확인·검토 중"]}},
+            "status": {"type": "string", "enum": ["미확인", "회사 부인", "회사 확인·검토 중", "사실로 확인"]}},
             "required": ["id", "summary", "status"], "additionalProperties": False}},
         "key_points": {"type": "array", "items": {"type": "string"}},
     },
@@ -105,7 +105,7 @@ def build_payload(results: dict, market_status: dict, issue_date: str, cfg: dict
         "news": [cut(a, 250) for a in news],
         "holdings": holdings,
         "rumors": {"reports": [{**cut(r, 200), "rid": r.get("rid")} for r in rum.get("items", [])],
-                   "filings": [{k: f.get(k) for k in ("rid", "corp", "title", "date", "kind", "detail")}
+                   "filings": [{k: f.get(k) for k in ("rid", "corp", "headline", "media", "date", "kind", "detail")}
                                for f in (rum.get("data") or {}).get("filings", [])]},
         "disclosures": [{k: d.get(k) for k in ("corp", "market", "title", "date", "watch")}
                         for d in (results.get("disclosures") or {}).get("items", [])[:10]],
@@ -191,7 +191,7 @@ def validate(summary: dict, payload: dict, cfg: dict) -> tuple[dict, list[str]]:
     for r in summary.get("rumors") or []:
         if r.get("id") not in rids:
             warnings.append(f"찌라시 id {r.get('id')} 없음 → 제외"); continue
-        status = r.get("status") if r.get("status") in ("미확인", "회사 부인", "회사 확인·검토 중") else "미확인"
+        status = r.get("status") if r.get("status") in ("미확인", "회사 부인", "회사 확인·검토 중", "사실로 확인") else "미확인"
         if ok_text(f"찌라시 {r['id']}", r.get("summary")):
             out["rumors"].append({"id": r["id"], "summary": r["summary"].strip(), "status": status})
     out["rumors"] = out["rumors"][: cfg.get("rumor_items", 5)]

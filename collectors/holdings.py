@@ -119,8 +119,9 @@ class HoldingsCollector(BaseCollector):
             except Exception as e:  # noqa: BLE001 — Google 뉴스가 막혀 있으면 오늘 RSS 에서 찾는다
                 self.log.info("Google 뉴스 사용 불가(%s) → 오늘 수집한 RSS 에서 검색", type(e).__name__)
             if not arts:
+                names = {info["name"], info["name"].replace(" ", "")} | set(h.get("aliases") or [])
                 for a in self.cfg.get("news_pool") or []:
-                    if info["name"] in a.get("title", "") + a.get("description", ""):
+                    if any(n and n in a.get("title", "") + a.get("description", "") for n in names):
                         arts.append({**{k: a.get(k) for k in ("title", "url", "source", "published", "description")},
                                      "lang": "ko"})
         arts = [a for a in arts if a["title"]]
