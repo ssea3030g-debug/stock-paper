@@ -116,7 +116,8 @@ class HoldingsCollector(BaseCollector):
     def _price(self, h, info):
         live = self.cfg.get("live")
         if h["market"] == "US":
-            cutoff, label, symbols = self.ctx.issue_date - dt.timedelta(days=1), "16:00 ET", [h["code"]]
+            # Yahoo 는 클래스 주식을 BRK-B 로 씀 (저장·Finnhub 는 BRK.B)
+            cutoff, label, symbols = self.ctx.issue_date - dt.timedelta(days=1), "16:00 ET", [h["code"].replace(".", "-")]
         else:
             cutoff = dt.date.fromisoformat(self.ctx.market_status["last_session"])
             label, symbols = "15:30 KST", [h["code"] + ".KS", h["code"] + ".KQ"]

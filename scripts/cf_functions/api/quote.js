@@ -44,7 +44,7 @@ export async function onRequestGet({ request }) {
   const market = (url.searchParams.get("market") || "").toUpperCase();
   const code = (url.searchParams.get("code") || "").toUpperCase().slice(0, 20);
   if (!code || !/^[A-Z0-9.\-]{1,20}$/.test(code)) return err(400, "bad_request");
-  const symbols = market === "KR" ? [code + ".KS", code + ".KQ"] : [code];
+  const symbols = market === "KR" ? [code + ".KS", code + ".KQ"] : [code.replace(/\./g, "-")];   // Yahoo 는 BRK.B 대신 BRK-B
   for (const sym of symbols) {
     try {
       const q = await tryQuote(sym);

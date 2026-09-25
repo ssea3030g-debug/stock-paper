@@ -101,8 +101,8 @@
       return '<p class="msg">이 화면에서는 종목을 추가·수정할 수 없습니다. 바꿀 종목은 Claude 채팅으로 알려 주세요.</p>';
     }
     return '<form class="box" id="addf" novalidate><h3>종목 추가</h3><div class="fgrid">' +
-      '<label class="wide" for="f-q">종목 이름 또는 코드<input id="f-q" list="f-list" autocomplete="off" spellcheck="false" placeholder="삼성전자, 엔비디아, NVDA, 005930"></label>' +
-      '<datalist id="f-list"></datalist>' +
+      '<label class="wide" for="f-q">종목 이름 또는 코드<input id="f-q" autocomplete="off" spellcheck="false" placeholder="삼성전자, 넷플릭스, NFLX, 005930"></label>' +
+      '<div class="wide" id="f-sug" role="listbox" aria-label="종목 후보" style="display:grid;gap:0"></div>' +
       '<label for="f-qty">보유 수량 (선택)<input id="f-qty" inputmode="decimal" autocomplete="off" placeholder="10"></label>' +
       '<label for="f-avg">평균 단가 (선택)<input id="f-avg" inputmode="decimal" autocomplete="off" placeholder="원 / 달러"></label>' +
       '</div><button class="btn" type="submit">추가</button><p class="msg" id="f-msg" aria-live="polite"></p></form>';
@@ -121,16 +121,53 @@
     if (/^[A-Za-z][A-Za-z.\-]{0,5}$/.test(t)) return { market: "US", code: t.toUpperCase(), name: "" };
     return { market: "", code: "", name: t };      // 모르는 이름 → 갱신 때 Claude 가 찾아 맞춤
   }
-  function fillList(q) {
-    var dl = document.getElementById("f-list");
-    if (!dl) return;
+  var sugTimer = null, sugSeq = 0;
+  function localCands(q) {
     var n = q.replace(/\s/g, ""), out = [];
-    if (n.length >= 1) {
-      for (var k in USKO) { if (k.indexOf(n) === 0) out.push(k + " (" + USKO[k] + ")"); if (out.length >= 5) break; }
-      var kr = (DATA.names && DATA.names.kr) || [];
-      for (var i = 0; i < kr.length && out.length < 12; i++) if (kr[i][0].replace(/\s/g, "").indexOf(n) === 0) out.push(kr[i][0] + " (" + kr[i][1] + ")");
+    if (!n) return out;
+    for (var k in USKO) { if (k.indexOf(n) === 0) out.push({ label: k, sub: "미국 " + USKO[k], value: k + " (" + USKO[k] + ")" }); if (out.length >= 5) break; }
+    var kr = (DATA.names && DATA.names.kr) || [];
+    for (var i = 0; i < kr.length && out.length < 10; i++) {
+      if (kr[i][0].replace(/\s/g, "").indexOf(n) === 0) out.push({ label: kr[i][0], sub: "국내 " + kr[i][1], value: kr[i][0] + " (" + kr[i][1] + ")" });
     }
-    dl.innerHTML = out.map(function (o) { return '<option value="' + esc(o) + '"></option>'; }).join("");
+    return out;
+  }
+  function isLatin(q) { return /^[A-Za-z][A-Za-z0-9 .&,'\-]{1,40}$/.test(q.trim()); }
+  function searchApi(q) {
+    return fetch("/api/search?q=" + encodeURIComponent(q.trim())).then(function (r) { return r.ok ? r.json() : []; });
+  }
+  function drawSug(cands) {
+    var box = document.getElementById("f-sug");
+    if (!box) return;
+    box.innerHTML = cands.map(function (c) {
+      return '<button type="button" role="option" data-v="' + esc(c.value) + '" style="appearance:none;display:flex;justify-content:space-between;gap:8px;' +
+        'width:100%;text-align:left;padding:11px 4px;border:0;border-bottom:1px solid var(--hair);background:transparent;color:inherit;font:500 15px/1.3 var(--f-sans);cursor:pointer">' +
+        "<span>" + esc(c.label) + '</span><span style="color:var(--muted);font-size:12.5px;white-space:nowrap">' + esc(c.sub) + "</span></button>";
+    }).join("");
+    box.querySelectorAll("button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var inp = document.getElementById("f-q");
+        inp.value = b.getAttribute("data-v"); box.innerHTML = ""; inp.focus();
+      });
+    });
+  }
+  function fillList(q) {
+    var cands = localCands(q), seq = ++sugSeq;
+    drawSug(cands);
+    clearTimeout(sugTimer);
+    if (!DATA.site_storage || !isLatin(q) || cands.length >= 5) return;
+    sugTimer = setTimeout(function () {
+      searchApi(q).then(function (list) {
+        if (seq !== sugSeq) return;   // 그사이 더 입력했으면 버림
+        var seen = {};
+        cands.forEach(function (c) { seen[c.value] = 1; });
+        list.forEach(function (x) {
+          var v = x.name + " (" + x.code + ")";
+          if (!seen[v]) cands.push({ label: x.name, sub: (x.market === "KR" ? "국내 " : "미국 ") + x.code, value: v });
+        });
+        drawSug(cands.slice(0, 10));
+      }).catch(function () { /* 후보만 못 보여 줌 */ });
+    }, 300);
   }
 
   function setMsg(text, err) {
@@ -144,11 +181,24 @@
     if (!raw) return setMsg("종목 이름이나 코드를 입력하세요. 예: 삼성전자, 엔비디아, NVDA", true);
     var tick = raw.match(/\s([A-Z][A-Z.\-]{0,5})$/);
     var r = tick ? { market: "US", code: tick[1], name: raw.replace(/\s[A-Z.\-]+$/, "") } : resolve(raw);
+    var btn = ev.target.querySelector("button[type=submit]");
+    if (r.market || !DATA.site_storage) return save(r, raw, btn);
+    if (!isLatin(raw)) {
+      return setMsg("‘" + raw + "’ 종목을 찾지 못했습니다. 영어 이름이나 티커로 입력해 보세요. 예: NioCorp, NB", true);
+    }
+    btn.disabled = true;
+    setMsg("종목을 찾는 중입니다…");
+    searchApi(raw).then(function (list) {
+      btn.disabled = false;
+      if (!list.length) return setMsg("‘" + raw + "’ 종목을 찾지 못했습니다. 티커로 입력해 보세요. 예: NFLX, BRK.B", true);
+      save({ market: list[0].market, code: list[0].code, name: list[0].name }, raw, btn);
+    }).catch(function () { btn.disabled = false; setMsg("종목 검색에 실패했습니다. 잠시 뒤 다시 시도하세요.", true); });
+  }
+  function save(r, raw, btn) {
     var id = r.market ? keyOf(r) : "Q-" + Date.now().toString(36);
     var h = { market: r.market, code: r.code, name: r.name, query: raw,
               qty: num(document.getElementById("f-qty").value), avg: num(document.getElementById("f-avg").value),
               added_at: new Date().toISOString() };
-    var btn = ev.target.querySelector("button");
     btn.disabled = true;
     db.doc("holdings/" + id).set(h).then(function () {
       flash = { text: (r.name || raw) + (r.code ? " (" + r.code + ")" : "") + " 추가했습니다." +
@@ -381,7 +431,7 @@
     approval_required: "조직 정책상 승인이 필요해 자동 갱신을 못 했습니다. Claude 채팅에 ‘갱신’이라고 보내세요."
   };
   function maybeRefresh(reason) {
-    if (!db || !DATA.refresh_trigger || !holdings.length || DATA.sample) return;
+    if (!db || DATA.site_storage || !DATA.refresh_trigger || !holdings.length || DATA.sample) return;   // Cloudflare 앱은 매시간 예약 작업이 대신함
     var age = Date.now() - (Date.parse(DATA.holdings_at || DATA.collected_at) || 0);
     var missing = holdings.some(function (h) { return !stockOf(h); });
     if (reason !== "add" && !missing && age < (DATA.refresh_after_min || 30) * 60000) return;
@@ -412,10 +462,11 @@
      내 종목 저장은 /api/holdings(KV), 시세는 /api/quote(Yahoo 프록시)로 대신한다.
      실시간 동기화는 없어서 짧은 간격으로 다시 물어보는 방식으로 흉내 낸다. */
   function siteDb() {
+    var pollNow = function () {};
     function call(method, body) {
       return fetch("/api/holdings", { method: method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
         .then(function (r) {
-          if (r.ok) return r.json();
+          if (r.ok) { pollNow(); return r.json(); }   // 저장 직후 목록을 바로 다시 받음
           return r.json().catch(function () { return {}; }).then(function (e) {
             var err = new Error("api"); err.code = e.code || ("http_" + r.status); throw err;
           });
@@ -445,6 +496,7 @@
                 cb({ docs: arr.map(function (x) { return { id: x.id, data: function () { return x; } }; }) });
               }).catch(function (e) { if (errCb) errCb({ code: "network" }); });
             }
+            pollNow = poll;
             poll();
             setInterval(poll, 25000);
           },

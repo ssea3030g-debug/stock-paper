@@ -99,6 +99,14 @@ class NewHoldingsTest(unittest.TestCase):
             new = new_holdings.new_holdings(STOCKS, page)
         self.assertEqual(new, [STOCKS[1]])
 
+    def test_unresolved_name_only_holding_counts_as_new(self):
+        q = {"id": "Q-abc1", "market": "", "code": "", "name": "니오코프 디벨롭먼츠"}
+        with tempfile.TemporaryDirectory() as t:
+            page = Path(t) / "index.html"
+            page.write_text(PAGE.format(snapshot=json.dumps([dict(STOCKS[0], id="KR-005930")])), encoding="utf-8")
+            new = new_holdings.new_holdings([dict(STOCKS[0], id="KR-005930"), q], page)
+        self.assertEqual(new, [q])
+
     def test_key_of_defaults_market_to_kr(self):
         self.assertEqual(new_holdings.key_of({"code": "005930"}), "KR-005930")
         self.assertEqual(new_holdings.key_of({"market": "us", "code": "nvda"}), "US-NVDA")

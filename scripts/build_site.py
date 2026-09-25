@@ -36,9 +36,13 @@ STOCK_DATA_RE = re.compile(r'(<script type="application/json" id="stock-data">)(
 CF_FUNCTIONS_SRC = ROOT / "scripts" / "cf_functions"
 
 SW = """// 아침증권신문 서비스 워커: 페이지는 네트워크 우선(오프라인이면 마지막으로 본 것), 아이콘은 캐시 우선
-var CACHE = "paper-v2";
+var CACHE = "paper-v3";
 self.addEventListener("install", function (e) { self.skipWaiting(); });
-self.addEventListener("activate", function (e) { e.waitUntil(self.clients.claim()); });
+self.addEventListener("activate", function (e) {
+  e.waitUntil(caches.keys().then(function (ks) {   // 예전 버전 캐시(종목·시세 응답이 남아 있을 수 있음) 삭제
+    return Promise.all(ks.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
+  }).then(function () { return self.clients.claim(); }));
+});
 self.addEventListener("fetch", function (e) {
   var req = e.request;
   var u = new URL(req.url);
@@ -129,9 +133,15 @@ def add_site_storage(html: str) -> str:
         data = json.loads(m.group(2))
     except json.JSONDecodeError:
         return html
-    if data.get("site_storage"):
+    us = ROOT / "data" / "us_names_ko.json"
+    us_names = json.loads(us.read_text(encoding="utf-8")) if us.exists() else None
+    if data.get("site_storage") and not data.get("refresh_trigger") and \
+            (us_names is None or (data.get("names") or {}).get("us") == us_names):
         return html
     data["site_storage"] = True
+    data["refresh_trigger"] = ""   # 옛 호에 박힌 원본 예약 작업 ID 를 지움 (사본은 원본을 부르지 않음)
+    if us_names is not None:   # 옛 호도 최신 미국 종목 한글 이름으로 찾을 수 있게
+        data.setdefault("names", {})["us"] = us_names
     return html[:m.start()] + m.group(1) + json.dumps(data, ensure_ascii=False) + m.group(3) + html[m.end():]
 
 

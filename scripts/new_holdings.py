@@ -21,6 +21,11 @@ def key_of(h: dict) -> str:
     return f"{str(h.get('market') or 'KR').upper()}-{str(h.get('code') or '').upper()}"
 
 
+def ident(h: dict) -> str:
+    """앱 저장소의 문서 id 가 있으면 그것(이름만 넣어 아직 못 맞춘 Q-… 종목 포함), 없으면 시장-코드."""
+    return str(h.get("id") or key_of(h))
+
+
 def published_keys(page: Path) -> set[str]:
     if not page.exists():
         return set()
@@ -31,12 +36,12 @@ def published_keys(page: Path) -> set[str]:
         data = json.loads(m.group(1))
     except json.JSONDecodeError:
         return set()
-    return {key_of(h) for h in (data.get("snapshot") or [])}
+    return {ident(h) for h in (data.get("snapshot") or [])}
 
 
 def new_holdings(live: list[dict], page: Path) -> list[dict]:
     seen = published_keys(page)
-    return [h for h in live if h.get("code") and key_of(h) not in seen]
+    return [h for h in live if (h.get("code") or h.get("name") or h.get("query")) and ident(h) not in seen]
 
 
 def main(argv=None) -> int:

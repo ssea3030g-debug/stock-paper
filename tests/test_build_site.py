@@ -41,7 +41,7 @@ class BuildSiteTest(unittest.TestCase):
 
     def test_site_storage_flag_injected_once(self):
         page = ('<!doctype html><html><head><title>t</title></head><body>'
-                '<script type="application/json" id="stock-data">{"issue_date": "2026-09-25"}</script>'
+                '<script type="application/json" id="stock-data">{"issue_date": "2026-09-25", "refresh_trigger": "trig_x"}</script>'
                 '</body></html>')
         with tempfile.TemporaryDirectory() as t:
             src, site = Path(t) / "out", Path(t) / "site"
@@ -51,6 +51,8 @@ class BuildSiteTest(unittest.TestCase):
             html = (site / "2026-09-25.html").read_text(encoding="utf-8")
             data = json.loads(build_site.STOCK_DATA_RE.search(html).group(2))
             self.assertTrue(data["site_storage"])
+            self.assertEqual(data["refresh_trigger"], "")   # 원본 예약 작업 ID 가 남지 않음
+            self.assertEqual(data["names"]["us"]["넷플릭스"], "NFLX")
             build_site.build(CFG, src, site)   # 다시 돌려도 한 번만
             html2 = (site / "2026-09-25.html").read_text(encoding="utf-8")
             self.assertEqual(html2.count('"site_storage"'), 1)
