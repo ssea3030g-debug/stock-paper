@@ -84,7 +84,8 @@ def render_issue(cfg: dict, bundle: dict, summary: dict, out_dir: Path, standalo
                 "refresh_trigger": (cfg.get("app") or {}).get("refresh_trigger_id", ""),
                 "refresh_after_min": (cfg.get("app") or {}).get("refresh_after_min", 30),
                 "stocks": stocks, "snapshot": bundle.get("holdings") or [], "sample": bool(bundle.get("sample")),
-                "names": name_lists(), "fx": usdkrw(results)}
+                "names": name_lists(), "fx": usdkrw(results),
+                "rumor_log": [{k: r.get(k) for k in ("title", "status", "summary", "date")} for r in rumors]}
     ear = [i for sec in ("korea_market", "us_market") for i in (results.get(sec) or {}).get("items", [])][:5]
 
     dates = set(archive_dates(out_dir, issue)) | {dt.date.fromisoformat(d) for d in (extra_archive or [])}
@@ -179,7 +180,10 @@ def build_rumors(results: dict, summary: dict, limit: int) -> list[dict]:
             source = f"{src.get('media') or '언론'} 보도 · {src['corp']} 해명 공시" if is_f else src.get("source")
             out.append({"title": title, "url": src.get("url"), "source": source,
                         "date": (src.get("published") or src.get("date") or "")[:16],
-                        "summary": s["summary"], "status": s["status"], "kind": "filing" if s["id"] in filings else "report"})
+                        "summary": s["summary"], "status": s["status"], "kind": "filing" if s["id"] in filings else "report",
+                        "novelty": s.get("novelty"), "angle": s.get("angle"), "watch": s.get("watch"),
+                        "related": s.get("related") or [], "outlets": src.get("outlets") or [],
+                        "also": src.get("also") or []})
     if not out and not summary.get("rumors"):
         for f in filings.values():
             out.append({"title": f"{f['corp']} — {f.get('headline') or f['title']}", "url": f["url"],

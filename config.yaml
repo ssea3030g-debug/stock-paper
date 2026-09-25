@@ -89,6 +89,10 @@ collectors:
       - { name: "매일경제 전체",   url: "https://www.mk.co.kr/rss/40300001/" }
       - { name: "한국경제 IT",     url: "https://www.hankyung.com/feed/it" }
       - { name: "한국경제 경제",   url: "https://www.hankyung.com/feed/economy" }
+      - { name: "연합뉴스 전체",   url: "https://www.yna.co.kr/rss/news.xml" }            # 찌라시·단독 보도 폭 넓히기
+      - { name: "연합뉴스 국제",   url: "https://www.yna.co.kr/rss/international.xml" }
+      - { name: "한국경제 전체",   url: "https://www.hankyung.com/feed/all-news" }
+      - { name: "한국경제 국제",   url: "https://www.hankyung.com/feed/international" }
       - { name: "미국 시장 뉴스", type: finnhub, category: general, url: "https://finnhub.io/api/v1/news", public_url: "https://finnhub.io/" }
     keywords:
       include: []            # 비우면 전체. 하나라도 포함하면 통과
@@ -137,7 +141,10 @@ collectors:
   rumors:                    # 찌라시·풍문 레이더 — 언론의 미확인 보도 + DART 풍문 해명·조회공시
     enabled: true
     filing_days: 3
-    max_collect: 15
+    max_collect: 20
+    report_hours: 48           # 새 소문 위주: 최근 이틀치 기사만
+    min_score: 3               # 소문 강도 점수 하한 (단독·거래설·익명 취재원·영문 reportedly 등은 높게, 검토·가능성은 낮게)
+    prev_page: /home/user/site/index.html   # 이전 호 — 어제 실린 소문과 겹치면 '후속'으로 판단 (없으면 무시)
 
 # ── 휴장일 ───────────────────────────────────────────────────
 market_calendar:            # 기본 휴장일 표: data/krx_holidays.yaml (매년 갱신)

@@ -286,6 +286,35 @@ class HoldingsTest(unittest.TestCase):
 
 
 class RumorsTest(unittest.TestCase):
+    def test_strength_freshness_cluster_and_follow_up(self):
+        import json, tempfile
+        from pathlib import Path as P
+        pool = [
+            {"id": "a", "title": "[단독] 가나전자, 다라소재 지분 매각 추진…IB업계 \"사모펀드와 협상 중\"", "description": "",
+             "url": "u1", "source": "한국경제", "published": "2026-09-25T06:00+09:00"},
+            {"id": "b", "title": "가나전자 다라소재 지분 매각 추진설…회사 \"검토 중\"", "description": "",
+             "url": "u2", "source": "연합뉴스", "published": "2026-09-25T05:00+09:00"},
+            {"id": "c", "title": "Acme reportedly in talks to buy Beta, people familiar said", "description": "",
+             "url": "u3", "source": "Reuters", "published": "2026-09-25T02:00+09:00"},
+            {"id": "d", "title": "코스피 상승 가능성 검토", "description": "", "url": "u4", "source": "s",
+             "published": "2026-09-25T06:00+09:00"},                                     # 흔한 말만 → 제외
+            {"id": "e", "title": "[단독] 오래된 인수설", "description": "", "url": "u5", "source": "s",
+             "published": "2026-09-18T06:00+09:00"},                                     # 이틀보다 오래 → 제외
+        ]
+        with tempfile.TemporaryDirectory() as t:
+            page = P(t) / "index.html"
+            page.write_text('<script type="application/json" id="stock-data">' + json.dumps(
+                {"rumor_log": [{"title": "Acme in talks to buy Beta", "status": "미확인", "date": "2026-09-24"}]}) + "</script>",
+                encoding="utf-8")
+            cfg = dict(CFG["rumors"], news_pool=pool, prev_page=str(page), min_score=3, report_hours=48)
+            r = REGISTRY["rumors"](cfg, make_ctx(env={})).run()
+        titles = [x["title"] for x in r.items]
+        self.assertEqual(len(r.items), 2)                                  # 두 매체의 같은 소문은 하나로
+        self.assertTrue(titles[0].startswith("[단독] 가나전자"))              # 강도 높은 것이 먼저
+        self.assertEqual(r.items[0]["outlets"], ["한국경제", "연합뉴스"])
+        self.assertEqual(r.items[1]["seen_before"]["status"], "미확인")      # 어제 실린 소문 → 후속 후보
+        self.assertEqual(r.data["previous"][0]["title"], "Acme in talks to buy Beta")
+
     def test_reports_and_filings(self):
         pool = [{"id": "n1", "title": "A사, B사 인수설…회사 '사실무근'", "description": "", "url": "u", "source": "s",
                  "published": "2026-09-25T06:00+09:00"},

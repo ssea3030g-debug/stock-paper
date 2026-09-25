@@ -49,9 +49,17 @@ RULES = """당신은 한국어 증권 신문의 편집장입니다. 아래 [데�
   · target(추천 목표가)과 stop(손절 참고선)은 반드시 levels 의 key 중에서 고릅니다(없으면 null). 숫자를 새로 만들지 마세요.
   · sell_timing: 언제·어떤 조건이면 파는 것을 검토할지 1~2문장 (예: '○○선 아래로 두 번 연속 마감하면', '목표가 근처에서 나눠서').
   · summary: 2~3문장. 단정·보장 표현(반드시, 확실히, 무조건, 보장) 금지. 숫자는 데이터에 있는 값만.
-- rumors: 찌라시·풍문 후보(reports 의 rid, filings 의 rid) 중 파장이 큰 것 최대 {rumor_items}개.
-  status 는 데이터로만 판단: 해명 공시가 부인하면 "회사 부인", 검토 중·미확정이라고 하면 "회사 확인·검토 중", 확정 공시로 사실이라고 하면 "사실로 확인", 그 밖엔 "미확인".
-  summary 는 '무슨 소문(보도)인지'를 한두 문장으로. 사실처럼 단정하지 말고 '~라는 보도', '~설' 형태로 쓰세요.
+- rumors: 찌라시·풍문 후보(reports 의 rid, filings 의 rid) 중 파장이 크고 '새로운' 것 최대 {rumor_items}개.
+  · 고르는 순서: score(소문 강도)·outlets(보도 매체 수)가 높고, [단독]·거래설(인수·매각·합병·지분·경영권)·
+    익명 취재원(소식통·IB업계·people familiar)이 있는 것, 해명 공시로 내용이 드러난 것. 흔한 시황·전망 기사, 생활·부동산 일반 기사,
+    이미 확정·발표된 사실 보도(소문이 아님)는 고르지 마세요. 상장사·대기업·시장에 영향을 줄 미확정 이야기만.
+  · seen_before 가 있는 항목(어제 실린 소문)은 새 사실(회사 해명·부인·공시·새 매체 보도)이 있을 때만 고르고 novelty 를 "후속"으로.
+    previous(어제 실린 소문) 중 오늘 해명 공시(filings)가 나온 것은 꼭 "후속"으로 다루세요. 나머지는 "새 소문".
+  · status 는 데이터로만 판단: 해명 공시가 부인하면 "회사 부인", 검토 중·미확정이라고 하면 "회사 확인·검토 중", 확정 공시로 사실이라고 하면 "사실로 확인", 그 밖엔 "미확인".
+  · summary: '무슨 소문(보도)인지'를 2~3문장으로 구체적으로(누가·무엇을·얼마에·언제, 기사에 있는 것만). '~라는 보도', '~설' 형태로, 단정 금지.
+  · angle: 왜 주목할 만한지 1문장 (거래 규모·업계 파장·지배구조 변화 등 기사·공시에 있는 근거로).
+  · watch: 무엇으로 확인되는지 1문장 (예: 회사의 조회공시 답변, 이사회·공정위 신고, 공식 발표 일정 — 데이터에 있거나 일반 절차만).
+  · related: 기사·공시에 이름이 나온 상장사만 (없으면 빈 배열). 추측으로 수혜·피해 종목을 만들지 마세요.
 
 출력 형식 (JSON 하나만 출력)
 {
@@ -62,7 +70,8 @@ RULES = """당신은 한국어 증권 신문의 편집장입니다. 아래 [데�
                 "rumors": [{"id": "KR-005930-r1", "summary": "1~2문장", "status": "미확인"}],
                 "advice": {"view": "보유 유지", "target": "hi_1y", "stop": "ma60", "sell_timing": "1~2문장",
                            "conditions": [{"name": "조건", "met": true, "detail": "근거 1문장"}], "summary": "2~3문장"}}],
-  "rumors": [{"id": "r1", "summary": "1~2문장", "status": "미확인"}],
+  "rumors": [{"id": "r1", "summary": "2~3문장", "status": "미확인", "novelty": "새 소문",
+              "angle": "1문장", "watch": "1문장", "related": ["회사명"]}],
   "key_points": ["핵심 1", "핵심 2", "핵심 3"]
 }
 - key_points 는 정확히 {key_points}개, 각 60자 이내.
@@ -128,7 +137,9 @@ SCHEMA = {
             "required": ["key", "news", "filings", "rumors"], "additionalProperties": False}},
         "rumors": {"type": "array", "items": {"type": "object", "properties": {
             "id": {"type": "string"}, "summary": {"type": "string"},
-            "status": {"type": "string", "enum": ["미확인", "회사 부인", "회사 확인·검토 중", "사실로 확인"]}},
+            "status": {"type": "string", "enum": ["미확인", "회사 부인", "회사 확인·검토 중", "사실로 확인"]},
+            "novelty": {"type": "string", "enum": ["새 소문", "후속"]}, "angle": {"type": "string"},
+            "watch": {"type": "string"}, "related": {"type": "array", "items": {"type": "string"}}},
             "required": ["id", "summary", "status"], "additionalProperties": False}},
         "key_points": {"type": "array", "items": {"type": "string"}},
     },
@@ -176,7 +187,10 @@ def build_payload(results: dict, market_status: dict, issue_date: str, cfg: dict
         "watchlist": points("watchlist"),
         "news": [cut(a, 250) for a in news],
         "holdings": holdings,
-        "rumors": {"reports": [{**cut(r, 200), "rid": r.get("rid")} for r in rum.get("items", [])],
+        "rumors": {"reports": [{**cut(r, 300), "rid": r.get("rid"), "score": r.get("score"), "matched": r.get("matched"),
+                                "outlets": r.get("outlets"), "also": [a.get("title") for a in r.get("also") or []][:3],
+                                "seen_before": r.get("seen_before")} for r in rum.get("items", [])],
+                   "previous": (rum.get("data") or {}).get("previous") or [],
                    "filings": [{k: f.get(k) for k in ("rid", "corp", "headline", "media", "date", "kind", "detail")}
                                for f in (rum.get("data") or {}).get("filings", [])]},
         "disclosures": [{k: d.get(k) for k in ("corp", "market", "title", "date", "watch")}
@@ -291,7 +305,13 @@ def validate(summary: dict, payload: dict, cfg: dict) -> tuple[dict, list[str]]:
             warnings.append(f"찌라시 id {r.get('id')} 없음 → 제외"); continue
         status = r.get("status") if r.get("status") in ("미확인", "회사 부인", "회사 확인·검토 중", "사실로 확인") else "미확인"
         if ok_text(f"찌라시 {r['id']}", r.get("summary")):
-            out["rumors"].append({"id": r["id"], "summary": r["summary"].strip(), "status": status})
+            item = {"id": r["id"], "summary": r["summary"].strip(), "status": status,
+                    "novelty": r.get("novelty") if r.get("novelty") in ("새 소문", "후속") else "새 소문"}
+            for f in ("angle", "watch"):
+                if r.get(f) and ok_text(f"찌라시 {r['id']} {f}", r.get(f)):
+                    item[f] = r[f].strip()
+            item["related"] = [x.strip() for x in r.get("related") or [] if isinstance(x, str) and x.strip()][:5]
+            out["rumors"].append(item)
     out["rumors"] = out["rumors"][: cfg.get("rumor_items", 5)]
 
     kps = [k.strip() for i, k in enumerate(summary.get("key_points") or []) if ok_text(f"핵심 {i+1}", k)]
