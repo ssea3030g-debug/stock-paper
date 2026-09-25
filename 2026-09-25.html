@@ -951,6 +951,100 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
     hit.addEventListener("pointerleave", reset);
   }
 
+  /* ── 가격 흐름·배당·애널리스트 의견·AI 매도 점검 ─────────── */
+  function cell(label, v, cls) { return "<div><b>" + esc(label) + '</b><span class="' + (cls || "") + '">' + v + "</span></div>"; }
+  function padCells(n) { return new Array((3 - n % 3) % 3 + 1).join('<div aria-hidden="true"></div>'); }
+  function flowSec(st, cur) {
+    var g = st.signals;
+    if (!g || !g.last) return "";
+    var vs = function (ma) { return ma ? '<small style="font-weight:400"> (현재 ' + pct((g.last / ma - 1) * 100) + ")</small>" : ""; };
+    var cells = [cell("20일 이동평균", money(g.ma20, cur) + vs(g.ma20)), cell("60일 이동평균", money(g.ma60, cur) + vs(g.ma60)),
+                 cell("1년 범위 위치", g.pos_1y == null ? "—" : nf(g.pos_1y, 0) + "%"),
+                 cell("1개월 등락", pct(g.ret_1m), dirc(g.ret_1m)), cell("3개월 등락", pct(g.ret_3m), dirc(g.ret_3m)),
+                 cell("1년 고점 대비", pct(g.from_high_pct), dirc(g.from_high_pct))];
+    return '<div class="dsec"><h4>가격 흐름</h4><div class="kv">' + cells.join("") + "</div>" +
+      '<p class="sub" style="margin-top:6px">' + esc(g.as_of) + " 종가 기준 · " + esc(g.source || "") + "</p></div>";
+  }
+  function divSec(h, st, cur) {
+    var d = st.dividends;
+    if (!d) return "";
+    var hist = d.history || [];
+    if (!hist.length && d.yield_indicated_pct == null) {
+      return '<div class="dsec"><h4>배당</h4><p class="msg">최근 2년 동안 배당 기록이 없습니다.</p></div>';
+    }
+    var cells = [cell("배당수익률 (최근 1년)", d.ttm_yield_pct == null ? "—" : nf(d.ttm_yield_pct, 2) + "%"),
+                 cell("주당 배당금 (최근 1년)", money(d.ttm_per_share, cur)), cell("최근 1년 지급 횟수", (d.count_ttm || 0) + "회")];
+    if (h.qty && d.ttm_per_share) cells.push(cell("내 예상 연 배당금", money(d.ttm_per_share * h.qty, cur)));
+    if (d.yield_indicated_pct != null) cells.push(cell("예정 배당수익률", nf(d.yield_indicated_pct, 2) + "%"));
+    if (d.payout_ratio_pct != null) cells.push(cell("배당성향", nf(d.payout_ratio_pct, 1) + "%"));
+    if (d.growth_5y_pct != null) cells.push(cell("5년 배당 성장률 (연)", pct(d.growth_5y_pct), dirc(d.growth_5y_pct)));
+    return '<div class="dsec"><h4>배당</h4><div class="kv">' + cells.join("") + padCells(cells.length) + "</div>" +
+      (hist.length ? "<table><thead><tr><th>지급 기준일</th><th>주당 배당금</th></tr></thead><tbody>" +
+        hist.slice().reverse().map(function (x) { return "<tr><td>" + esc(x.date) + "</td><td>" + money(x.amount, cur) + "</td></tr>"; }).join("") +
+        "</tbody></table>" : "") +
+      '<p class="sub" style="margin-top:6px">' + esc(d.source || "") + (cur !== "KRW" && FX ? " · 현재 환율로 원화 환산" : "") +
+      " · 세전 금액</p></div>";
+  }
+  function analystSec(st) {
+    var a = st.analyst;
+    if (!a) return "";
+    var rows = [["강력 매수", a.strongBuy], ["매수", a.buy], ["보유", a.hold], ["매도", a.sell], ["강력 매도", a.strongSell]];
+    var tot = rows.reduce(function (t, r) { return t + (r[1] || 0); }, 0);
+    if (!tot) return "";
+    return '<div class="dsec"><h4>애널리스트 투자의견</h4><div style="display:grid;gap:6px">' + rows.map(function (r) {
+        var w = (r[1] || 0) / tot * 100;
+        return '<div class="wrow"><span class="nm">' + r[0] + '</span><span class="bar"><i style="width:' + Math.max(w ? 1 : 0, w).toFixed(1) +
+          '%"></i></span><span class="v">' + (r[1] || 0) + "명</span></div>";
+      }).join("") + '</div><p class="sub" style="margin-top:6px">' + esc(a.period || "") + " 기준 " + tot + "명 · " + esc(a.source || "") +
+      " · 목표가는 무료로 받을 수 있는 공식 출처가 없어 싣지 않음</p></div>";
+  }
+  var CONSENT = "sp_ai_consent_v1";
+  function consented() { try { return localStorage.getItem(CONSENT) === "1"; } catch (e) { return !!window.__spConsent; } }
+  function setConsent(v) { window.__spConsent = v; try { v ? localStorage.setItem(CONSENT, "1") : localStorage.removeItem(CONSENT); } catch (e) { /* 이 화면에서만 */ } }
+  function levelTxt(st, key, cur) {
+    var l = key && st.levels && st.levels[key];
+    return l ? money(l.value, cur) + '<small style="font-weight:400;display:block;color:var(--muted)">' + esc(l.label) + "</small>" : "—";
+  }
+  function adviceSec(st, cur) {
+    var head = '<div class="dsec" id="adv"><h4>AI 매도 점검 <small style="font-weight:400;color:var(--muted)">참고용</small></h4>';
+    if (!consented()) {
+      return head + '<div class="box" style="gap:10px"><p class="msg">AI(Claude)가 여러 조건을 세워 이 종목의 보유·매도 시점을 점검한 <b>참고 의견</b>입니다. ' +
+        "예측이 아니며 틀릴 수 있습니다.</p>" +
+        '<label style="display:flex;gap:8px;align-items:flex-start;font:500 13.5px/1.5 var(--f-sans)"><input type="checkbox" id="adv-ok" style="width:20px;height:20px;flex:none;margin:2px 0 0;padding:0;accent-color:var(--ink)">' +
+        "투자 판단과 그 결과에 대한 책임은 모두 본인에게 있음을 확인합니다.</label>" +
+        '<button type="button" class="btn" id="adv-go" disabled>확인하고 보기</button></div></div>';
+    }
+    var a = st.advice;
+    if (!a) {
+      return head + '<p class="msg">아직 점검 의견이 없습니다. 다음 아침 신문(또는 새 종목 반영) 때 만들어집니다.</p>' +
+        '<p class="sub"><button type="button" class="btn ghost" id="adv-off" style="padding:6px 8px;font-size:12px">확인 철회</button></p></div>';
+    }
+    var tone = { "보유 유지": "flat", "추가 매수 검토": "up", "일부 매도 검토": "down", "매도 검토": "down", "판단 보류": "flat" }[a.view] || "flat";
+    return head +
+      '<p style="margin:0 0 10px"><span class="' + tone + '" style="display:inline-block;border:2px solid currentColor;padding:4px 10px;font:700 16px/1.2 var(--f-sans)">' +
+      esc(a.view) + "</span></p>" +
+      '<div class="kv">' + cell("추천 목표가", levelTxt(st, a.target, cur)) + cell("손절 참고선", levelTxt(st, a.stop, cur)) +
+      cell("충족한 조건", (a.conditions || []).filter(function (c) { return c.met; }).length + " / " + (a.conditions || []).length) + "</div>" +
+      '<ul style="list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px;font:400 14px/1.55 var(--f-sans)">' +
+      (a.conditions || []).map(function (c) {
+        return '<li style="display:grid;grid-template-columns:1.6em 1fr;gap:4px"><span aria-label="' + (c.met ? "충족" : "미충족") + '" style="font-weight:700">' +
+          (c.met ? "✓" : "✗") + "</span><span><b>" + esc(c.name) + "</b> — " + esc(c.detail) + "</span></li>";
+      }).join("") + "</ul>" +
+      (a.sell_timing ? '<p style="margin:10px 0 0;font:600 14px/1.55 var(--f-sans)">매도 검토 시점: <span style="font-weight:400">' + esc(a.sell_timing) + "</span></p>" : "") +
+      '<p style="margin:8px 0 0;font:400 14px/1.6 var(--f-serif)">' + esc(a.summary) + "</p>" +
+      '<p class="sub" style="margin-top:8px">AI(Claude)가 ' + esc(DATA.issue_date) + " 아침 데이터만으로 쓴 참고 의견입니다. 예측·보장이 아니며, " +
+      "투자 판단과 책임은 본인에게 있습니다. 목표가·손절선은 데이터로 계산한 기준선 중에서 고른 값입니다. " +
+      '<button type="button" class="btn ghost" id="adv-off" style="padding:4px 6px;font-size:12px">확인 철회</button></p></div>';
+  }
+  function bindAdvice() {
+    var ok = document.getElementById("adv-ok"), go = document.getElementById("adv-go"), off = document.getElementById("adv-off");
+    if (ok && go) {
+      ok.addEventListener("change", function () { go.disabled = !ok.checked; });
+      go.addEventListener("click", function () { if (ok.checked) { setConsent(true); render(); var el = document.getElementById("adv"); if (el) el.scrollIntoView(); } });
+    }
+    if (off) off.addEventListener("click", function () { setConsent(false); render(); });
+  }
+
   /* ── 물타기·불타기 계산기 (원화) ────────────── */
   var calcState = {};
   function calcSec(h, p, cur) {
@@ -1029,6 +1123,7 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
     }
 
     if (p && DATA.site_storage && h.market && h.code) html += chartSec();
+    if (st) html += flowSec(st, cur) + divSec(h, st, cur) + analystSec(st) + adviceSec(st, cur);
     if (p) html += calcSec(h, p, cur);
 
     if (st && st.earnings) {
@@ -1109,6 +1204,7 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
     bindCharts();
     if (document.getElementById("pc-box")) bindPriceChart(h, cur);
     bindCalc(h, p, cur);
+    bindAdvice();
     document.getElementById("back").addEventListener("click", function () { view = { name: "list" }; render(); window.scrollTo(0, 0); });
     var ef = document.getElementById("editf");
     if (ef) {
