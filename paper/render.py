@@ -79,6 +79,9 @@ def render_issue(cfg: dict, bundle: dict, summary: dict, out_dir: Path, standalo
     stocks = build_stocks(results, summary, bundle.get("holdings") or [])
     rumors = build_rumors(results, summary, next((s.get("max_items", 5) for s in sections if s["id"] == "rumors"), 5))
     app_data = {"issue_date": bundle["issue_date"], "collected_at": bundle.get("collected_at", ""),
+                "holdings_at": bundle.get("holdings_at") or bundle.get("collected_at", ""),
+                "refresh_trigger": (cfg.get("app") or {}).get("refresh_trigger_id", ""),
+                "refresh_after_min": (cfg.get("app") or {}).get("refresh_after_min", 30),
                 "stocks": stocks, "snapshot": bundle.get("holdings") or [], "sample": bool(bundle.get("sample"))}
     ear = [i for sec in ("korea_market", "us_market") for i in (results.get(sec) or {}).get("items", [])][:5]
 

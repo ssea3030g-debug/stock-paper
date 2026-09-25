@@ -65,11 +65,14 @@ class HoldingsCollector(BaseCollector):
 
     # ── 시세 ─────────────────────────────────────────────
     def _price(self, h, info):
+        live = self.cfg.get("live")
         if h["market"] == "US":
             cutoff, label, symbols = self.ctx.issue_date - dt.timedelta(days=1), "16:00 ET", [h["code"]]
         else:
             cutoff = dt.date.fromisoformat(self.ctx.market_status["last_session"])
             label, symbols = "15:30 KST", [h["code"] + ".KS", h["code"] + ".KQ"]
+        if live:   # 앱을 열 때 갱신: 오늘 장중 가격까지 (Yahoo 는 수 분~20분 지연)
+            cutoff, label = dt.date.today() + dt.timedelta(days=1), "최근가"
         last_err = None
         for sym in symbols:
             try:

@@ -7,6 +7,7 @@
   var holdings = (DATA.snapshot || []).map(function (h) { return Object.assign({}, h, { id: keyOf(h) }); });
   var view = { name: "list" };
   var flash = null;
+  var refreshMsg = "";
 
   function keyOf(h) { return String(h.market || "KR").toUpperCase() + "-" + String(h.code || "").toUpperCase(); }
   function esc(s) {
@@ -59,7 +60,7 @@
       pl = ' · <span class="' + dirc(g) + '">' + (g > 0 ? "+" : "") + money(g, cur) + " (" + pct(r) + ")</span>";
     }
     var right = p ? '<span class="l2 r ' + dirc(p.change_pct) + '">' + (p.change_pct == null ? "전일비 없음" : pct(p.change_pct)) + "</span>"
-                  : '<span class="l2 r">' + (st ? "시세 없음" : "1시간 안에 채워짐") + "</span>";
+                  : '<span class="l2 r">' + (st ? "시세 없음" : "불러오는 중") + "</span>";
     return '<li><button type="button" class="row" data-id="' + esc(h.id) + '">' +
       '<span class="nm">' + esc(h.name || (st && st.name) || h.code) + "<small>" +
       esc((st && st.exchange) || (h.market === "KR" ? "국내" : "미국")) + " " + esc(h.code) + "</small></span>" +
@@ -73,7 +74,8 @@
       : '<p class="msg">아직 추가한 종목이 없습니다. 아래에서 추가하세요.</p>';
     app.innerHTML =
       '<div><h2>내 종목</h2><p class="sub">' + esc(DATA.issue_date) + " 아침 발행 기준 · 종목을 누르면 중요 뉴스·실적·손익을 봅니다</p>" +
-      (DATA.sample ? '<p class="sample">견본 — 샘플 데이터입니다</p>' : "") + "</div>" +
+      (DATA.sample ? '<p class="sample">견본 — 샘플 데이터입니다</p>' : "") +
+      '<p class="msg" id="rf-msg" aria-live="polite">' + esc(refreshMsg) + "</p></div>" +
       list + formHtml();
     app.querySelectorAll("button.row").forEach(function (b) {
       b.addEventListener("click", function () { view = { name: "detail", id: b.getAttribute("data-id") }; render(); window.scrollTo(0, 0); });
@@ -113,8 +115,9 @@
     var btn = ev.target.querySelector("button");
     btn.disabled = true;
     db.doc("holdings/" + keyOf(h)).set(h).then(function () {
-      flash = { text: (h.name || code) + " 추가했습니다. " + (DATA.stocks[keyOf(h)] ? "" : "시세·뉴스·실적은 1시간 안에 채워집니다. 바로 보려면 Claude 채팅에 ‘갱신’이라고 보내세요."), err: false };
+      flash = { text: (h.name || code) + " 추가했습니다.", err: false };
       renderList();
+      if (!DATA.stocks[keyOf(h)]) maybeRefresh("add");
     }).catch(function (e) {
       btn.disabled = false;
       setMsg(e && e.code === "quota_exceeded" ? "저장 공간이 가득 찼습니다. 종목을 몇 개 지운 뒤 다시 시도하세요."
@@ -133,7 +136,7 @@
         '<div class="c ' + dirc(p.change) + '">' + (p.change == null ? "전일비 확인 불가" : signed(p.change, cur === "KRW" ? 0 : 2) + " (" + pct(p.change_pct) + ")") + "</div>" +
         '<div class="sub">기준 ' + esc(p.as_of) + ' · <a href="' + esc(p.url) + '" target="_blank" rel="noopener">' + esc(p.source) + "</a></div>";
     } else {
-      html += '<p class="msg">' + (st ? "시세를 받지 못했습니다." : "이 종목 정보는 1시간 안에 채워집니다. 바로 보려면 Claude 채팅에 ‘갱신’이라고 보내세요.") + "</p>";
+      html += '<p class="msg">' + (st ? "시세를 받지 못했습니다." : "이 종목 정보를 불러오는 중입니다. 1~2분 뒤 이 화면이 자동으로 바뀝니다.") + "</p>";
     }
     html += "</div>";
 
@@ -229,6 +232,48 @@
     renderList();
   }
 
+
+  /* ── 앱을 열 때 갱신 요청 ────────────── */
+  function setRefresh(text, err) {
+    refreshMsg = text;
+    var m = document.getElementById("rf-msg");
+    if (m) { m.textContent = text; m.className = "msg" + (err ? " err" : ""); }
+  }
+  var REFRESH_MSG = {
+    not_in_manifest: "자동 갱신이 허용되지 않았습니다. 페이지를 새로 열어 허용하거나, Claude 채팅에 ‘갱신’이라고 보내세요.",
+    server_not_connected: "Claude Code Remote 커넥터가 없어 자동 갱신을 못 했습니다. claude.ai 설정 → 커넥터에서 추가하세요.",
+    needs_reauth: "Claude Code Remote 연결이 만료됐습니다. claude.ai 설정 → 커넥터에서 다시 연결하세요.",
+    blocked_by_policy: "조직 정책으로 자동 갱신이 막혀 있습니다. Claude 채팅에 ‘갱신’이라고 보내세요.",
+    approval_required: "조직 정책상 승인이 필요해 자동 갱신을 못 했습니다. Claude 채팅에 ‘갱신’이라고 보내세요."
+  };
+  function maybeRefresh(reason) {
+    if (!db || !DATA.refresh_trigger || !holdings.length || DATA.sample) return;
+    var age = Date.now() - (Date.parse(DATA.holdings_at || DATA.collected_at) || 0);
+    var missing = holdings.some(function (h) { return !DATA.stocks[h.id]; });
+    if (reason !== "add" && !missing && age < (DATA.refresh_after_min || 30) * 60000) return;
+    var ref = db.doc("meta/refresh");
+    ref.get().then(function (snap) {
+      var last = snap.exists ? (Date.parse((snap.data() || {}).requested_at) || 0) : 0;
+      var pageAt = Date.parse(DATA.holdings_at || DATA.collected_at) || 0;
+      if (Date.now() - last < 10 * 60000 && pageAt < last) {   // 이미 요청했고 아직 반영 전
+        setRefresh("최신 정보로 바꾸는 중입니다. 1~2분 뒤 이 화면이 자동으로 바뀝니다.");
+        return;
+      }
+      return ref.set({ requested_at: new Date().toISOString(), reason: reason }).then(fire);
+    }).catch(function () { /* 저장소 오류면 조용히 넘어감 */ });
+  }
+  function fire() {
+    return Promise.resolve(window.claude.use("mcp")).then(function (mcp) {
+      if (!mcp) { setRefresh("이 화면에서는 자동 갱신을 쓸 수 없습니다. Claude 채팅에 ‘갱신’이라고 보내세요.", true); return; }
+      setRefresh("최신 정보로 바꾸는 중입니다. 1~2분 뒤 이 화면이 자동으로 바뀝니다.");
+      return mcp.callTool("Claude Code Remote", "fire_trigger", { trigger_id: DATA.refresh_trigger }, { cache: false })
+        .catch(function (e) {
+          var code = e && e.code;
+          setRefresh(REFRESH_MSG[code] || ("갱신 요청이 전달되지 않았을 수 있습니다 (" + code + "). 몇 분 뒤에도 그대로면 Claude 채팅에 ‘갱신’이라고 보내세요."), true);
+        });
+    });
+  }
+
   /* ── 저장소 연결 ─────────────────────── */
   render();
   var use = window.claude && window.claude.use ? window.claude.use("db") : Promise.resolve(null);
@@ -241,6 +286,7 @@
         .sort(function (a, b) { return String(a.added_at || "").localeCompare(String(b.added_at || "")); });
       // 편집 중인 입력을 지우지 않도록, 목록 화면이거나 처음 받을 때만 다시 그림
       if (first || view.name === "list") render();
+      if (first) maybeRefresh("open");
       first = false;
     }, function (e) {
       flash = { text: "저장소 연결이 끊겼습니다 (" + (e && e.code) + "). 새로고침하세요.", err: true };

@@ -56,7 +56,7 @@ def setup_logging(cfg: dict, issue: dt.date, write_file: bool) -> None:
                         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s")
 
 
-def collect(cfg: dict, ctx: Context, holdings: list | None = None) -> dict:
+def collect(cfg: dict, ctx: Context, holdings: list | None = None, pool_from: dict | None = None) -> dict:
     results = {}
     for cid, ccfg in (cfg.get("collectors") or {}).items():
         if not (ccfg or {}).get("enabled", True):
@@ -66,7 +66,7 @@ def collect(cfg: dict, ctx: Context, holdings: list | None = None) -> dict:
             log.warning("[%s] 알 수 없는 수집기 — 건너뜀", cid)
             continue
         log.info("[%s] 수집 시작", cid)
-        news_res = results.get("news") or {}
+        news_res = results.get("news") or (pool_from or {}).get("news") or {}
         pool = (news_res.get("data") or {}).get("pool") or news_res.get("items") or []
         if cid == "disclosures":   # 내 종목 공시를 우선 보여 주기 위해 목록을 함께 넘김
             ccfg = {**ccfg, "watchlist": [{"code": h["code"], "market": "KOSPI"} for h in holdings or []
@@ -88,6 +88,8 @@ def main(argv=None) -> int:
     g.add_argument("--collect-only", action="store_true", help="수집 + 요약 프롬프트 파일 생성까지만")
     g.add_argument("--render-only", action="store_true", help="저장된 수집 결과로 요약·HTML 만")
     ap.add_argument("--sample", action="store_true", help="샘플 응답으로 실행 (지면 미리보기)")
+    ap.add_argument("--only", help="저장된 오늘 수집 결과에 이 수집기들만 다시 실행해 덮어씀 (예: holdings)")
+    ap.add_argument("--live", action="store_true", help="내 종목 시세를 장중 최신가까지 포함해 받음")
     ap.add_argument("--out", help="출력 폴더 (기본: config output.dir)")
     ap.add_argument("--holdings", help="내 종목 목록 JSON 파일 (앱 저장소에서 내려받은 것). 기본: output/data/holdings.json")
     ap.add_argument("--archive", default="", help="지난 호 날짜 목록(쉼표 구분) — 출력 폴더에 없는 과거 호를 링크에 포함")
@@ -112,6 +114,23 @@ def main(argv=None) -> int:
     if args.render_only:
         bundle = json.loads(raw_path.read_text(encoding="utf-8"))
         results = bundle["results"]
+    elif args.only and raw_path.exists():
+        # 오늘 신문은 그대로 두고 일부 수집기만 다시 (앱을 열 때 내 종목 갱신용)
+        bundle = json.loads(raw_path.read_text(encoding="utf-8"))
+        hp = Path(args.holdings) if args.holdings else data_dir / "holdings.json"
+        holdings = json.loads(hp.read_text(encoding="utf-8")) if hp.exists() else bundle.get("holdings", [])
+        holdings = holdings.get("holdings", holdings) if isinstance(holdings, dict) else holdings
+        only = {x.strip() for x in args.only.split(",")}
+        sub = {"collectors": {k: v for k, v in cfg["collectors"].items() if k in only}}
+        for k in sub["collectors"]:
+            sub["collectors"][k] = dict(sub["collectors"][k], live=args.live)
+        ctx = Context(issue_date=issue, http=HttpClient.from_config(cfg.get("http")), calendar=calendar,
+                      env=dict(os.environ))
+        prev = bundle["results"]
+        fresh = collect({**sub, "collectors": sub["collectors"]}, ctx, holdings, pool_from=prev)
+        bundle["results"] = results = {**prev, **fresh}
+        bundle["holdings"] = holdings
+        bundle["holdings_at"] = dt.datetime.now(KST).isoformat(timespec="seconds")
     else:
         if args.sample:
             from paper.fixture_http import FixtureHttp
@@ -138,6 +157,7 @@ def main(argv=None) -> int:
     payload = summarizer.build_payload(results, status, issue.isoformat(), scfg)
 
     if not args.dry_run and not args.render_only:
+        bundle.setdefault("holdings_at", bundle.get("collected_at"))
         data_dir.mkdir(parents=True, exist_ok=True)
         raw_path.write_text(json.dumps(bundle, ensure_ascii=False, indent=1), encoding="utf-8")
         prompt_path.write_text(summarizer.build_prompt(payload, scfg), encoding="utf-8")
