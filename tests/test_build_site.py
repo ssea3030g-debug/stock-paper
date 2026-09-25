@@ -35,6 +35,9 @@ class BuildSiteTest(unittest.TestCase):
             self.assertTrue((site / "functions" / "api" / "holdings.js").exists())
             self.assertTrue((site / "functions" / "api" / "quote.js").exists())
             self.assertTrue(json.loads((site / ".well-known" / "assetlinks.json").read_text(encoding="utf-8")))
+            sw = (site / "sw.js").read_text(encoding="utf-8")
+            self.assertIn('"/api/"', sw)   # 저장소·시세 응답은 서비스 워커가 캐시하지 않음
+            self.assertTrue((site / "functions" / "_middleware.js").exists())
 
     def test_site_storage_flag_injected_once(self):
         page = ('<!doctype html><html><head><title>t</title></head><body>'

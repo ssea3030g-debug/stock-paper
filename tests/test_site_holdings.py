@@ -47,7 +47,7 @@ class SiteHoldingsTest(unittest.TestCase):
         self.assertEqual(holdings, STOCKS)
         self.assertIn("https://x.pages.dev/api/holdings", m.call_args[0][0].full_url)
 
-    def test_sends_access_service_token_headers(self):
+    def test_sends_site_password_as_bearer(self):
         class FakeResp:
             def __enter__(self):
                 return self
@@ -55,13 +55,10 @@ class SiteHoldingsTest(unittest.TestCase):
                 return False
             def read(self):
                 return b"[]"
-        env = {"CF_ACCESS_CLIENT_ID": "id.access", "CF_ACCESS_CLIENT_SECRET": "sec"}
-        with mock.patch.dict("os.environ", env), \
+        with mock.patch.dict("os.environ", {"SITE_PASSWORD": "pw"}), \
              mock.patch.object(site_holdings, "urlopen", return_value=FakeResp()) as m:
             site_holdings.fetch({"site": {"pages_url": "https://x.pages.dev"}})
-        req = m.call_args[0][0]
-        self.assertEqual(req.get_header("Cf-access-client-id"), "id.access")
-        self.assertEqual(req.get_header("Cf-access-client-secret"), "sec")
+        self.assertEqual(m.call_args[0][0].get_header("Authorization"), "Bearer pw")
 
     def test_login_page_instead_of_json_falls_back_to_static(self):
         class FakeResp:
