@@ -60,6 +60,7 @@ class RumorsCollector(BaseCollector):
             except (TypeError, ValueError):
                 continue
             hay = f"{a.get('title', '')} {a.get('description', '')}"
+            hay = re.sub(r"입소문|상승세를 타진|반등을 타진", " ", hay)   # 소문·타진이 들어가도 찌라시가 아닌 표현
             hit = [w for w in words if w in hay]
             weak = [w for w in WEAK_WORDS if w in hay]
             if not hit and not (weak and any(w in hay for w in DEAL_WORDS)):
@@ -109,7 +110,7 @@ class RumorsCollector(BaseCollector):
                         f["media"] = m.group(2).strip()
                     m = re.search(r"발생일자\s*(\d{4}-\d{2}-\d{2})", f["detail"])
                     f["occurred"] = m.group(1) if m else None
-                    f["repost"] = "재공시" in f["detail"]
+                    f["repost"] = bool(re.search(r"의\s*재공시|재공시입니다|재공시\(", f["detail"]))   # '재공시 하겠습니다'는 새 해명
                 except Exception as e:  # noqa: BLE001
                     self.log.info("공시 본문 읽기 실패 %s: %s", f["corp"], type(e).__name__)
         else:
