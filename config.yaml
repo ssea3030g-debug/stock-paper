@@ -137,6 +137,8 @@ collectors:
   rumors:                    # 찌라시·풍문 레이더 — 언론의 미확인 보도 + DART 풍문 해명·조회공시
     enabled: true
     filing_days: 3
+    report_hours: 36         # 이 시간 안에 나온 보도만 찌라시 후보 (뉴스 풀은 7일치라 그대로 쓰면 매일 같은 소문이 나옴)
+    detail_max: 12
     max_collect: 15
 
 # ── 휴장일 ───────────────────────────────────────────────────

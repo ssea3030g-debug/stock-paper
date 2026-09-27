@@ -277,3 +277,17 @@ class RumorsTest(unittest.TestCase):
         self.assertEqual(f[0]["rid"], "f1")
         self.assertEqual(f[0]["headline"], "샘플반도체, 마곡 데이터센터 투자")   # 공시 제목 대신 소문 내용
         self.assertEqual(f[0]["media"], "샘플경제")
+
+    def test_fresh_first(self):
+        """오래된 보도는 빼고, 지난 호에 실린 소문은 뒤로 — 매일 새 찌라시가 앞에 오게."""
+        from collectors.rumors import norm
+        mk = lambda i, t, p: {"id": i, "title": t, "description": "", "url": "u", "source": "s", "published": p}
+        pool = [mk("n1", "A사 인수설 재점화", "2026-09-25T05:00+09:00"),
+                mk("n2", "C사, D사 매각 검토…업계에 따르면", "2026-09-24T20:00+09:00"),
+                mk("n3", "E사 합병설", "2026-09-20T06:00+09:00"),          # 36시간보다 오래됨
+                mk("n4", "정부, 요금 개편 검토", "2026-09-25T06:00+09:00")]   # 약한 표현만, 거래 아님
+        r = REGISTRY["rumors"](dict(CFG["rumors"], news_pool=pool, seen=[norm("A사 인수설 재점화")]),
+                               make_ctx()).run()
+        self.assertEqual([x["id"] for x in r.items], ["n2", "n1"])
+        self.assertTrue(r.items[1]["seen_before"])
+        self.assertFalse(r.data["filings"][0]["seen_before"])

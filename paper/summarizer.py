@@ -41,6 +41,8 @@ RULES = """당신은 한국어 증권 신문의 편집장입니다. 아래 [데�
 - holdings[].rumors: 종목 찌라시 후보(holdings[].rumors) 중 의미 있는 것 최대 3개, status 기준은 아래 rumors 와 같음.
 - rumors: 찌라시·풍문 후보(reports 의 rid, filings 의 rid) 중 파장이 큰 것 최대 {rumor_items}개.
   status 는 데이터로만 판단: 해명 공시가 부인하면 "회사 부인", 검토 중·미확정이라고 하면 "회사 확인·검토 중", 확정 공시로 사실이라고 하면 "사실로 확인", 그 밖엔 "미확인".
+  매일 새 소문을 싣습니다: seen_before 가 true 인 후보는 지난 호에 이미 실렸으니 새 후보가 모자랄 때만 쓰고,
+  repost(재공시)이면서 occurred(최초 보도일)가 오래된 것도 후순위입니다. 새 후보가 적으면 개수를 줄여도 됩니다.
   summary 는 '무슨 소문(보도)인지'를 한두 문장으로. 사실처럼 단정하지 말고 '~라는 보도', '~설' 형태로 쓰세요.
 
 출력 형식 (JSON 하나만 출력)
@@ -119,8 +121,10 @@ def build_payload(results: dict, market_status: dict, issue_date: str, cfg: dict
         "watchlist": points("watchlist"),
         "news": [cut(a, 250) for a in news],
         "holdings": holdings,
-        "rumors": {"reports": [{**cut(r, 200), "rid": r.get("rid")} for r in rum.get("items", [])],
-                   "filings": [{k: f.get(k) for k in ("rid", "corp", "headline", "media", "date", "kind", "detail")}
+        "rumors": {"reports": [{**cut(r, 200), "rid": r.get("rid"), "seen_before": r.get("seen_before", False)}
+                               for r in rum.get("items", [])],
+                   "filings": [{k: f.get(k) for k in ("rid", "corp", "headline", "media", "date", "occurred", "repost",
+                                                      "seen_before", "kind", "detail")}
                                for f in (rum.get("data") or {}).get("filings", [])]},
         "disclosures": [{k: d.get(k) for k in ("corp", "market", "title", "date", "watch")}
                         for d in (results.get("disclosures") or {}).get("items", [])[:10]],

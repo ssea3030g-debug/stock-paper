@@ -29,8 +29,18 @@ def filing_detail(raw: bytes, limit: int = 700) -> str:
     m = re.search(r"1\.\s*(풍문|조회|공시)", text)
     return text[m.start():][:limit].strip() if m else ""
 
-RUMOR_WORDS = ["찌라시", "루머", "풍문", "설(說)", "소문", "관측", "소식통", "검토", "추진설", "추진 중", "타진",
-               "물밑", "협상 중", "인수설", "매각설", "합병설", "유력", "~할 듯", "할 듯", "가능성", "전해졌다", "알려졌다"]
+# 그 자체로 '확인 안 된 이야기'를 뜻하는 말
+RUMOR_WORDS = ["찌라시", "루머", "풍문", "설(說)", "소문", "소식통", "추진설", "인수설", "매각설", "합병설", "상장설",
+               "물밑", "타진", "협상 중", "막후", "업계에 따르면", "IB업계에 따르면", "관계자에 따르면"]
+# 흔한 말이라, 거래·사건을 뜻하는 말과 함께 나올 때만 찌라시 후보로 본다
+WEAK_WORDS = ["검토", "관측", "추진 중", "추진한다", "유력", "할 듯", "가능성", "전해졌다", "알려졌다", "나왔다"]
+DEAL_WORDS = ["인수", "매각", "합병", "상장", "IPO", "지분", "투자", "공장", "계약", "수주", "제휴", "분할", "유상증자",
+              "철수", "구조조정", "데이터센터", "M&A", "경영권", "매물", "사임", "교체"]
+
+
+def norm(text: str | None) -> str:
+    """지난 호와 같은 소문인지 비교하려고 공백·기호를 뺀 글자만 남긴다."""
+    return re.sub(r"[^0-9A-Za-z가-힣]", "", text or "")[:40]
 FILING_WORDS = ["풍문", "해명", "조회공시", "미확정"]
 
 
@@ -39,13 +49,27 @@ class RumorsCollector(BaseCollector):
 
     def collect(self) -> SectionResult:
         words = self.cfg.get("keywords") or RUMOR_WORDS
+        seen = set(self.cfg.get("seen") or [])
+        # 뉴스 풀은 7일치라 그대로 쓰면 매일 같은 소문이 나온다 → 최근 report_hours 시간 보도만
+        since = self.ctx.issue_time - dt.timedelta(hours=self.cfg.get("report_hours", 36))
         reports = []
         for a in self.cfg.get("news_pool") or []:
+            try:
+                if dt.datetime.fromisoformat(a.get("published") or "") < since:
+                    continue
+            except (TypeError, ValueError):
+                continue
             hay = f"{a.get('title', '')} {a.get('description', '')}"
             hit = [w for w in words if w in hay]
-            if hit:
-                reports.append({**{k: a.get(k) for k in ("id", "title", "url", "source", "published", "description")},
-                                "matched": hit})
+            weak = [w for w in WEAK_WORDS if w in hay]
+            if not hit and not (weak and any(w in hay for w in DEAL_WORDS)):
+                continue
+            reports.append({**{k: a.get(k) for k in ("id", "title", "url", "source", "published", "description")},
+                            "matched": hit + weak, "score": 2 * len(hit) + len(weak),
+                            "seen_before": norm(a.get("title")) in seen})
+        # 새 소문 먼저, 그다음 강한 표현·최신 순
+        reports.sort(key=lambda r: r.get("published") or "", reverse=True)
+        reports.sort(key=lambda r: (r["seen_before"], -r["score"]))
         filings, errors = [], []
         key = self.key("DART_API_KEY")
         if key:
@@ -83,12 +107,20 @@ class RumorsCollector(BaseCollector):
                     if m:
                         f["headline"] = re.sub(r"\s*(언론)?\s*보도\s*관련\s*$", "", m.group(1)).strip(" '\"‘’“”")
                         f["media"] = m.group(2).strip()
+                    m = re.search(r"발생일자\s*(\d{4}-\d{2}-\d{2})", f["detail"])
+                    f["occurred"] = m.group(1) if m else None
+                    f["repost"] = "재공시" in f["detail"]
                 except Exception as e:  # noqa: BLE001
                     self.log.info("공시 본문 읽기 실패 %s: %s", f["corp"], type(e).__name__)
         else:
             errors.append("DART_API_KEY 없음 (해명 공시 생략)")
         # 소문 내용을 읽어 낸 해명·답변 공시만 남긴다 (단순 시황변동 조회공시는 찌라시가 아님)
         filings = [f for f in filings if f.get("headline")]
+        for f in filings:
+            f["seen_before"] = norm(f["headline"]) in seen
+        # 지난 호에 안 나온 것 → 새로 불거진 소문(재공시 아님) → 최근 보도 순
+        filings.sort(key=lambda f: f.get("occurred") or "", reverse=True)
+        filings.sort(key=lambda f: (f["seen_before"], bool(f.get("repost"))))
         for i, f in enumerate(filings, 1):
             f["rid"] = f"f{i}"
         limit = self.cfg.get("max_collect", 15)

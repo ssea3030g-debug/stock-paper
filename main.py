@@ -56,7 +56,31 @@ def setup_logging(cfg: dict, issue: dt.date, write_file: bool) -> None:
                         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s")
 
 
-def collect(cfg: dict, ctx: Context, holdings: list | None = None, pool_from: dict | None = None) -> dict:
+def seen_rumors(data_dir: Path, issue: dt.date, days: int = 3) -> list[str]:
+    """지난 며칠 지면에 실제로 실린 찌라시(요약에서 고른 것)를 모은다 → 오늘은 새 소문을 먼저 싣기 위해."""
+    from collectors.rumors import norm
+    seen = set()
+    for i in range(1, days + 1):
+        day = issue - dt.timedelta(days=i)
+        bp, sp = data_dir / f"{day}.json", data_dir / f"{day}.summary.json"
+        if not (bp.exists() and sp.exists()):
+            continue
+        try:
+            rum = json.loads(bp.read_text(encoding="utf-8"))["results"].get("rumors") or {}
+            picked = {r.get("id") for r in json.loads(sp.read_text(encoding="utf-8")).get("rumors") or []}
+        except (ValueError, KeyError, AttributeError):
+            continue
+        for r in rum.get("items") or []:
+            if r.get("rid") in picked:
+                seen.add(norm(r.get("title")))
+        for f in (rum.get("data") or {}).get("filings") or []:
+            if f.get("rid") in picked:
+                seen.add(norm(f.get("headline")))
+    return sorted(seen)
+
+
+def collect(cfg: dict, ctx: Context, holdings: list | None = None, pool_from: dict | None = None,
+            seen: list | None = None) -> dict:
     results = {}
     for cid, ccfg in (cfg.get("collectors") or {}).items():
         if not (ccfg or {}).get("enabled", True):
@@ -74,7 +98,7 @@ def collect(cfg: dict, ctx: Context, holdings: list | None = None, pool_from: di
         elif cid == "holdings":
             ccfg = {**ccfg, "items": holdings or [], "news_pool": pool}
         elif cid == "rumors":
-            ccfg = {**ccfg, "news_pool": pool}
+            ccfg = {**ccfg, "news_pool": pool, "seen": seen or []}
         results[cid] = REGISTRY[cid](ccfg, ctx).run().to_dict()
     return results
 
@@ -127,7 +151,8 @@ def main(argv=None) -> int:
         ctx = Context(issue_date=issue, http=HttpClient.from_config(cfg.get("http")), calendar=calendar,
                       env=dict(os.environ))
         prev = bundle["results"]
-        fresh = collect({**sub, "collectors": sub["collectors"]}, ctx, holdings, pool_from=prev)
+        fresh = collect({**sub, "collectors": sub["collectors"]}, ctx, holdings, pool_from=prev,
+                       seen=seen_rumors(data_dir, issue))
         bundle["results"] = results = {**prev, **fresh}
         bundle["holdings"] = holdings
         bundle["holdings_at"] = dt.datetime.now(KST).isoformat(timespec="seconds")
@@ -149,7 +174,7 @@ def main(argv=None) -> int:
             raw = json.loads(hp.read_text(encoding="utf-8"))
             holdings = raw.get("holdings", raw) if isinstance(raw, dict) else raw
         log.info("내 종목 %d개", len(holdings))
-        results = collect(cfg, ctx, holdings)
+        results = collect(cfg, ctx, holdings, seen=seen_rumors(data_dir, issue))
         bundle = {"issue_date": issue.isoformat(), "sample": args.sample, "market_status": status, "holdings": holdings,
                   "collected_at": dt.datetime.now(KST).isoformat(timespec="seconds"), "results": results}
 
