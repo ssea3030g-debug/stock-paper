@@ -101,7 +101,8 @@ h1 .mark{background:linear-gradient(transparent 58%,var(--accent) 58%, var(--acc
 .ed-tools{background:var(--surface);border-top:1px solid var(--line);padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));display:grid;gap:10px;max-height:46vh;overflow:auto}
 .ed-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.seg button{border:0;background:transparent;padding:8px 14px;font-size:14px;font-weight:600;color:var(--muted);min-height:38px}
+.seg{flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:8px 10px;font-size:13px;font-weight:600;color:var(--muted);min-height:38px}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}
 .field{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);flex:1 1 220px;min-width:0}
 .field input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
@@ -109,6 +110,9 @@ h1 .mark{background:linear-gradient(transparent 58%,var(--accent) 58%, var(--acc
 .check{display:flex;align-items:center;gap:8px;font-size:14px}
 .check input{width:18px;height:18px;accent-color:var(--accent)}
 .ed-note{margin:0;font-size:12px;color:var(--muted)}
+.btn.ai{background:var(--ink);color:var(--ground);border-color:transparent}
+.status .btn.ai{margin-left:auto}
+.ai-status{font-size:13px;color:var(--muted);flex:1 1 160px;min-width:0}
 .drop{position:fixed;inset:0;z-index:40;background:rgba(230,176,30,.18);border:3px dashed var(--accent);display:grid;place-items:center;font:400 28px "Do Hyeon",sans-serif;color:var(--ink);pointer-events:none}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
@@ -129,15 +133,17 @@ h1 .mark{background:linear-gradient(transparent 58%,var(--accent) 58%, var(--acc
     <div class="status">
       <h2 id="pages-h">페이지</h2>
       <span class="count" id="count">0쪽</span>
+      <button class="btn sm ai" id="aiAll" type="button" hidden>AI로 모든 쪽 필기 지우기</button>
     </div>
     <p class="hint" id="hint">예시 페이지가 들어 있어요. 눌러서 편집 화면을 열고 <b>원본 보기</b>를 누르고 있으면 청소 전 모습이 보입니다. 내 페이지를 추가하면 예시는 빠집니다.</p>
+    <p class="hint">넣자마자 색 표시와 옅은 연필은 자동으로 빠져요. 꾹 눌러 쓴 연필은 인쇄 글씨만큼 진해서 밝기만으로는 가려낼 수 없으니, <b>AI로 필기 지우기</b>를 누르거나 편집 화면에서 <b>획 지우기</b>로 지울 선을 톡 누르세요.</p>
     <div class="grid" id="grid"></div>
   </section>
 
   <ul class="notes">
     <li>사진은 종이가 화면에 꽉 차게, 그림자 없이 위에서 찍으면 가장 깨끗합니다. 비스듬히 찍었다면 편집 화면의 <b>자르기</b>로 네 모서리를 맞춰 펴 주세요.</li>
-    <li>검은 볼펜 필기는 인쇄 글씨와 색이 같아서 자동으로 다 지워지지 않을 수 있어요. 편집 화면의 <b>지우개</b>로 문질러 지우세요.</li>
-    <li>사진(JPG, PNG)과 PDF를 넣을 수 있어요. 모든 처리는 이 기기 안에서만 하고, 파일을 어디에도 보내지 않습니다.</li>
+    <li><b>획 지우기</b>는 누른 선 한 획만 지워요. 연필 동그라미가 인쇄 글자에 닿아 있어도 갈림길에서 끊어서 동그라미만 지웁니다. 남은 부스러기는 <b>지우개</b>로 문지르세요.</li>
+    <li>사진(JPG, PNG)과 PDF를 넣을 수 있어요. 청소는 이 기기 안에서 하고, <b>AI로 필기 지우기</b>를 누를 때만 그 쪽 사진이 내 Claude 계정으로 전달돼 사용량이 쓰입니다.</li>
   </ul>
 </div>
 
@@ -170,15 +176,28 @@ h1 .mark{background:linear-gradient(transparent 58%,var(--accent) 58%, var(--acc
   <div class="ed-tools">
     <div class="ed-row">
       <div class="seg" role="group" aria-label="도구">
-        <button type="button" data-tool="erase" aria-pressed="true">지우개</button>
+        <button type="button" data-tool="tap" aria-pressed="true">획 지우기</button>
+        <button type="button" data-tool="erase" aria-pressed="false">지우개</button>
+        <button type="button" data-tool="restore" aria-pressed="false">되살리기</button>
         <button type="button" data-tool="pan" aria-pressed="false">이동</button>
         <button type="button" data-tool="crop" aria-pressed="false">자르기</button>
       </div>
       <button class="btn sm" id="peekBtn" type="button">원본 보기</button>
-    </div>
-    <div class="ed-row" data-for="erase">
-      <label class="field" for="brush">지우개 크기 <input type="range" id="brush" min="8" max="160" value="44"><output id="brushOut">44</output></label>
       <button class="btn sm" id="undoBtn" type="button">되돌리기</button>
+    </div>
+    <div class="ed-row ai-row" id="aiRow" hidden>
+      <button class="btn sm ai" id="aiOne" type="button">AI로 이 쪽 필기 지우기</button>
+      <span class="ai-status" id="aiStatus" role="status"></span>
+      <button class="btn sm" id="aiStop" type="button" hidden>멈추기</button>
+    </div>
+    <div class="ed-row" data-for="tap">
+      <p class="ed-note">지울 연필 선을 톡 누르면 그 한 획이 사라져요. 확대해서 누르면 더 정확합니다.</p>
+    </div>
+    <div class="ed-row" data-for="erase restore" hidden>
+      <label class="field" for="brush">붓 크기 <input type="range" id="brush" min="8" max="160" value="44"><output id="brushOut">44</output></label>
+    </div>
+    <div class="ed-row" data-for="restore" hidden>
+      <p class="ed-note">잘못 지워진 인쇄 글씨 위를 문지르면 청소 직후 모습으로 돌아와요.</p>
     </div>
     <div class="ed-row" data-for="pan" hidden>
       <p class="ed-note">확대한 뒤 손가락으로 끌어 옮겨 보세요. 지울 곳을 찾았으면 지우개로 돌아가세요.</p>
@@ -189,14 +208,14 @@ h1 .mark{background:linear-gradient(transparent 58%,var(--accent) 58%, var(--acc
       <button class="btn sm" id="cropApply" type="button" style="background:var(--accent);color:var(--accent-ink);border-color:transparent">자르기 적용</button>
     </div>
     <div class="ed-row">
-      <label class="field" for="strength">지우는 세기 <input type="range" id="strength" min="0" max="100" value="50"><output id="strengthOut">50</output></label>
+      <label class="field" for="strength">옅은 연필 지우기 <input type="range" id="strength" min="0" max="100" value="35"><output id="strengthOut">35</output></label>
       <label class="check" for="rmColor"><input type="checkbox" id="rmColor" checked>색 있는 표시 지우기</label>
     </div>
     <div class="ed-row">
       <button class="btn sm" id="rotBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>오른쪽으로 돌리기</button>
       <button class="btn sm" id="applyAll" type="button">이 설정을 모든 쪽에</button>
     </div>
-    <p class="ed-note">세기를 올리면 진한 연필 자국까지 지우고, 인쇄 글씨가 흐려지면 내리세요. 컬러로 인쇄된 문제라면 ‘색 있는 표시 지우기’를 끄세요.</p>
+    <p class="ed-note">‘옅은 연필 지우기’를 올리면 더 진한 자국까지 자동으로 빠지지만, 인쇄 글씨가 끊기기 시작하면 내리세요. 컬러로 인쇄된 문제(색 번호, 색 제목)가 사라지면 ‘색 있는 표시 지우기’를 끄세요. 끈 상태에서도 AI 지우기는 빨간 채점·색 펜을 찾아 지웁니다.</p>
   </div>
 </div>
 
@@ -209,7 +228,7 @@ h1 .mark{background:linear-gradient(transparent 58%,var(--accent) 58%, var(--acc
 'use strict';
 const $ = s => document.querySelector(s);
 const MAX_SIDE = 2400;
-const DEFAULTS = { strength: 50, removeColor: true };
+const DEFAULTS = { strength: 35, removeColor: true };
 const tick = () => new Promise(r => setTimeout(r, 16));
 const ICON = {
   left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
@@ -240,11 +259,7 @@ function isFull(p) {
   return p.corners.every((q, i) => Math.abs(q[0] - f[i][0]) < 1 && Math.abs(q[1] - f[i][1]) < 1);
 }
 
-/* ---------- 청소 알고리즘 ----------
-   1) 종이 바탕(조명·그림자)을 넓게 추정해 나눠서 밝기를 평평하게 만든다
-   2) 색이 뚜렷한 획(빨간 채점, 파란 펜, 형광펜)은 버린다
-   3) 남은 어두운 획을 덩어리로 묶고, 인쇄 잉크만큼 진한 픽셀이 충분한 덩어리만 남긴다
-      (연필은 인쇄 잉크보다 옅어서 진한 픽셀이 거의 없다) */
+/* ---------- 청소 알고리즘 ---------- */
 function boxMax(a, w, h, r) {
   const t = new Float32Array(a.length), o = new Float32Array(a.length);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -274,11 +289,14 @@ function boxBlur(a, w, h, r) {
   return o;
 }
 
+/* 1) 종이 바탕(조명·그림자)을 추정해 나눠서 밝기를 평평하게 만든다
+   2) 종이 밖(책상 등)은 하얗게 비운다
+   3) 색 있는 획(빨간 채점, 파란 펜, 형광펜)은 설정에 따라 버린다
+   4) 페이지의 인쇄 잉크 진하기를 재서, 그보다 확실히 옅은 덩어리(옅은 연필)만 버린다 */
 function cleanPage(src, opt) {
   const w = src.width, h = src.height, n = w * h;
   const px = ctx2d(src).getImageData(0, 0, w, h).data;
 
-  // 1) 종이 바탕 추정 (8px 칸마다 가장 밝은 값 → 넓게 퍼뜨림)
   const S = 8, sw = Math.ceil(w / S), sh = Math.ceil(h / S), sn = sw * sh;
   let R = new Float32Array(sn), G = new Float32Array(sn), B = new Float32Array(sn);
   for (let y = 0; y < h; y++) {
@@ -290,8 +308,7 @@ function cleanPage(src, opt) {
       if (px[i + 2] > B[b]) B[b] = px[i + 2];
     }
   }
-  R = boxMax(R, sw, sh, 2); G = boxMax(G, sw, sh, 2); B = boxMax(B, sw, sh, 2);
-  // 큰 검은 면(책상, 굵은 제목 띠)은 바탕으로 착각하지 않도록 종이 색으로 채움
+  R = boxMax(R, sw, sh, 4); G = boxMax(G, sw, sh, 4); B = boxMax(B, sw, sh, 4);
   const L = new Float32Array(sn);
   for (let i = 0; i < sn; i++) L[i] = 0.299 * R[i] + 0.587 * G[i] + 0.114 * B[i];
   const sorted = Float32Array.from(L).sort();
@@ -299,7 +316,17 @@ function cleanPage(src, opt) {
   let pr = 0, pg = 0, pb = 0, pc = 0;
   for (let i = 0; i < sn; i++) if (L[i] >= p75) { pr += R[i]; pg += G[i]; pb += B[i]; pc++; }
   pr /= pc; pg /= pc; pb /= pc;
-  for (let i = 0; i < sn; i++) if (L[i] < p75 * 0.62) { R[i] = pr; G[i] = pg; B[i] = pb; }
+  // 종이가 아닌 칸: 주변에서 가장 밝은 값조차 어두운 곳 (책상, 손, 짙은 그림자)
+  const np = new Uint8Array(sn);
+  for (let i = 0; i < sn; i++) if (L[i] < p75 * 0.72) { np[i] = 1; R[i] = pr; G[i] = pg; B[i] = pb; }
+  // 종이 가장자리 한 칸 옆까지를 '가장자리 근처'로
+  const nearNp = new Uint8Array(sn);
+  for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) {
+    if (!np[y * sw + x]) continue;
+    for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) {
+      const yy = y + a, xx = x + b; if (yy >= 0 && yy < sh && xx >= 0 && xx < sw) nearNp[yy * sw + xx] = 1;
+    }
+  }
   R = boxBlur(R, sw, sh, 2); G = boxBlur(G, sw, sh, 2); B = boxBlur(B, sw, sh, 2);
   const small = makeCanvas(sw, sh), sd = small.getContext('2d').createImageData(sw, sh);
   for (let i = 0; i < sn; i++) { sd.data[i * 4] = R[i]; sd.data[i * 4 + 1] = G[i]; sd.data[i * 4 + 2] = B[i]; sd.data[i * 4 + 3] = 255; }
@@ -309,77 +336,154 @@ function cleanPage(src, opt) {
   bx.drawImage(small, 0, 0, sw * S, sh * S);
   const bg = bx.getImageData(0, 0, w, h).data;
 
-  // 2) 픽셀 분류
-  const T = 0.35 + opt.strength / 100 * 0.4;          // 이보다 진하면 '인쇄 잉크급'
-  const LOW = Math.min(0.2, T - 0.12);                  // 이보다 옅으면 종이
-  const cls = new Uint8Array(n);                        // 0 종이, 1 옅은 획, 2 진한 획
-  const tone = new Uint8Array(n);
+  const NR = new Uint8ClampedArray(n * 3);   // 평평하게 만든 색 (0..255)
+  const dk = new Float32Array(n);            // 진하기 0(종이)..1(검정)
+  const cls = new Uint8Array(n);             // 0 종이, 1 잉크
+  const col = new Uint8Array(n);             // 색 있는 획으로 버린 픽셀
+  const blockOf = i => (((i / w) | 0) / S | 0) * sw + ((i % w) / S | 0);
   for (let i = 0, j = 0; i < n; i++, j += 4) {
     const r = Math.min(1, px[j] / Math.max(24, bg[j]));
     const g = Math.min(1, px[j + 1] / Math.max(24, bg[j + 1]));
     const b = Math.min(1, px[j + 2] / Math.max(24, bg[j + 2]));
-    const nl = 0.299 * r + 0.587 * g + 0.114 * b;
-    const d = 1 - nl;
-    tone[i] = Math.max(0, Math.min(255, Math.round((nl - 0.08) / 0.72 * 255)));
-    if (d < LOW) continue;
+    NR[i * 3] = r * 255; NR[i * 3 + 1] = g * 255; NR[i * 3 + 2] = b * 255;
+    const d = 1 - (0.299 * r + 0.587 * g + 0.114 * b);
+    dk[i] = d;
+    if (np[blockOf(i)]) continue;
+    if (d < 0.16) continue;
     if (opt.removeColor) {
       const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-      if (mx - mn > 0.17 && mx > 0.26) continue;        // 색 있는 획 (단, 아주 검은 곳은 인쇄 위에 겹친 것이라 남김)
+      if (mx - mn > 0.17 && mx > 0.26) { col[i] = 1; continue; }   // 색 있는 획 (아주 검은 곳은 인쇄 위에 겹친 것이라 남김)
     }
-    cls[i] = d > T ? 2 : 1;
+    cls[i] = 1;
   }
 
-  // 3) 연결된 덩어리 묶기 (8방향, union-find)
+  // 이 페이지 인쇄 잉크의 진하기 (잉크 픽셀 중 상위 10%)
+  const hist = new Uint32Array(101); let tot = 0;
+  for (let i = 0; i < n; i++) if (cls[i]) { hist[Math.min(100, Math.round(dk[i] * 100))]++; tot++; }
+  let acc = 0, ridge = 0.7;
+  for (let k = 100; k >= 0; k--) { acc += hist[k]; if (acc >= tot * 0.1) { ridge = k / 100; break; } }
+  const T = ridge * (0.4 + opt.strength / 100 * 0.45);   // 덩어리 안에 이보다 진한 점이 있어야 남김
+
+  // 버린 색 획의 가장자리(색이 옅어 회색으로 남는 테두리)도 마지막에 함께 버림. 진한 인쇄 글씨는 남김
+  const fringe = new Uint8Array(n);
+  if (opt.removeColor) {
+    const R3 = 3, t = new Uint8Array(n);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (col[y * w + x]) for (let k = Math.max(0, x - R3); k <= Math.min(w - 1, x + R3); k++) t[y * w + k] = 1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (t[y * w + x]) for (let k = Math.max(0, y - R3); k <= Math.min(h - 1, y + R3); k++) fringe[k * w + x] = 1;
+    for (let i = 0; i < n; i++) if (fringe[i] && dk[i] >= ridge * 0.8) fringe[i] = 0;
+  }
+
+  // 연결된 덩어리 (8방향)
   const lab = new Int32Array(n);
   const parent = [0];
   const find = a => { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
-  const unite = (a, b) => { a = find(a); b = find(b); if (a !== b) { if (a < b) parent[b] = a; else parent[a] = b; } };
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const i = y * w + x;
-      if (!cls[i]) continue;
-      let l = 0;
-      const nb = [x > 0 ? lab[i - 1] : 0, y > 0 && x > 0 ? lab[i - w - 1] : 0, y > 0 ? lab[i - w] : 0, y > 0 && x < w - 1 ? lab[i - w + 1] : 0];
-      for (const v of nb) if (v) { if (!l) l = v; else unite(l, v); }
-      if (!l) { l = parent.length; parent.push(l); }
-      lab[i] = l;
-    }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; if (!cls[i]) continue;
+    let l = 0;
+    const nbs = [x > 0 ? lab[i - 1] : 0, y > 0 && x > 0 ? lab[i - w - 1] : 0, y > 0 ? lab[i - w] : 0, y > 0 && x < w - 1 ? lab[i - w + 1] : 0];
+    for (const v of nbs) if (v) { if (!l) l = v; else { const a = find(l), b = find(v); if (a !== b) parent[Math.max(a, b)] = Math.min(a, b); } }
+    if (!l) { l = parent.length; parent.push(l); }
+    lab[i] = l;
   }
-  const nl2 = parent.length;
-  const size = new Int32Array(nl2), core = new Int32Array(nl2), edge = new Uint8Array(nl2);
+  const m = parent.length;
+  const size = new Int32Array(m), core = new Int32Array(m), edge = new Uint8Array(m);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = y * w + x; if (!lab[i]) continue;
     const r = find(lab[i]); lab[i] = r;
-    size[r]++; if (cls[i] === 2) core[r]++;
-    if (x === 0 || y === 0 || x === w - 1 || y === h - 1) edge[r] = 1;
+    size[r]++; if (dk[i] >= T) core[r]++;
+    if (nearNp[blockOf(i)]) edge[r] = 1;
   }
-  const keep = new Uint8Array(nl2);
-  const bigEdge = n * 0.01;
-  for (let r = 1; r < nl2; r++) {
+  const keep = new Uint8Array(m);
+  for (let r = 1; r < m; r++) {
     if (!size[r]) continue;
-    if (edge[r] && size[r] > bigEdge) continue;          // 가장자리에 붙은 큰 그림자·책상
-    keep[r] = core[r] >= 3 && core[r] >= size[r] * 0.15 ? 1 : 0;
-  }
-
-  // 옅은 픽셀은 진한 획 바로 옆(글자 테두리)일 때만 남긴다 → 글자에 닿은 연필 선도 떨어져 나감
-  const near = new Uint8Array(n), near2 = new Uint8Array(n), RN = 2;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    if (cls[y * w + x] !== 2) continue;
-    for (let k = Math.max(0, x - RN); k <= Math.min(w - 1, x + RN); k++) near[y * w + k] = 1;
-  }
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    if (!near[y * w + x]) continue;
-    for (let k = Math.max(0, y - RN); k <= Math.min(h - 1, y + RN); k++) near2[k * w + x] = 1;
+    if (edge[r] && size[r] > n * 0.002) continue;       // 종이 가장자리에 붙은 큰 그림자·책상
+    keep[r] = core[r] >= 3 && core[r] >= size[r] * 0.02 ? 1 : 0;
   }
 
   const out = makeCanvas(w, h), ox = out.getContext('2d');
   const od = ox.createImageData(w, h), o = od.data;
+  const tone = v => (v / 255 - 0.08) / 0.72 * 255;
   for (let i = 0, j = 0; i < n; i++, j += 4) {
-    const v = lab[i] && keep[lab[i]] && near2[i] ? tone[i] : 255;
-    o[j] = o[j + 1] = o[j + 2] = v; o[j + 3] = 255;
+    if (lab[i] && keep[lab[i]] && !fringe[i]) { o[j] = tone(NR[i * 3]); o[j + 1] = tone(NR[i * 3 + 1]); o[j + 2] = tone(NR[i * 3 + 2]); }
+    else { o[j] = o[j + 1] = o[j + 2] = 255; }
+    o[j + 3] = 255;
   }
   ox.putImageData(od, 0, 0);
   return out;
+}
+
+/* ---------- 획 나누기: 잉크를 뼈대로 가늘게 만든 뒤 갈림길에서 끊어 한 획씩 나눈다 ---------- */
+function thin(m, w, h) {
+  const del = [];
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let pass = 0; pass < 2; pass++) {
+      del.length = 0;
+      for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x; if (!m[i]) continue;
+        const p2 = m[i - w], p3 = m[i - w + 1], p4 = m[i + 1], p5 = m[i + w + 1], p6 = m[i + w], p7 = m[i + w - 1], p8 = m[i - 1], p9 = m[i - w - 1];
+        const Bn = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9; if (Bn < 2 || Bn > 6) continue;
+        const A = (!p2 && p3 ? 1 : 0) + (!p3 && p4 ? 1 : 0) + (!p4 && p5 ? 1 : 0) + (!p5 && p6 ? 1 : 0) + (!p6 && p7 ? 1 : 0) + (!p7 && p8 ? 1 : 0) + (!p8 && p9 ? 1 : 0) + (!p9 && p2 ? 1 : 0);
+        if (A !== 1) continue;
+        if (pass === 0 ? (p2 && p4 && p6) || (p4 && p6 && p8) : (p2 && p4 && p8) || (p2 && p6 && p8)) continue;
+        del.push(i);
+      }
+      if (del.length) { changed = true; for (const i of del) m[i] = 0; }
+    }
+  }
+}
+function segment(mask, w, h, minLen) {
+  const n = w * h, OFF = [-w - 1, -w, -w + 1, -1, 1, w - 1, w, w + 1];
+  const sk = Uint8Array.from(mask);
+  for (let x = 0; x < w; x++) { sk[x] = 0; sk[(h - 1) * w + x] = 0; }
+  for (let y = 0; y < h; y++) { sk[y * w] = 0; sk[y * w + w - 1] = 0; }
+  thin(sk, w, h);
+  let lab, br;
+  for (let round = 0; round < 4; round++) {
+    const nb = new Uint8Array(n);
+    // 갈림 수: 둘레를 한 바퀴 돌며 빈칸→잉크로 바뀌는 횟수 (계단 모양 뼈대를 갈림길로 오해하지 않게)
+    const RING = [-w, -w + 1, 1, w + 1, w, w - 1, -1, -w - 1];
+    for (let i = w; i < n - w; i++) if (sk[i]) {
+      let t = 0, c = 0;
+      for (let k = 0; k < 8; k++) { const a = sk[i + RING[k]], b = sk[i + RING[(k + 1) & 7]]; c += a; if (!a && b) t++; }
+      nb[i] = c <= 1 ? 1 : t >= 3 ? 3 : 2;
+    }
+    lab = new Int32Array(n); br = [null];
+    const stack = [];
+    for (let i = w; i < n - w; i++) {
+      if (!sk[i] || nb[i] >= 3 || lab[i]) continue;
+      const id = br.length, b = { id, skel: [], ends: 0, juncs: 0 }; br.push(b);
+      lab[i] = id; stack.push(i);
+      while (stack.length) {
+        const q = stack.pop(); b.skel.push(q); if (nb[q] <= 1) b.ends++;
+        for (const o of OFF) {
+          const r = q + o; if (!sk[r]) continue;
+          if (nb[r] >= 3) { b.juncs++; continue; }
+          if (!lab[r]) { lab[r] = id; stack.push(r); }
+        }
+      }
+    }
+    if (round === 3) break;
+    let pruned = 0;   // 굵은 획의 뼈대에 생기는 짧은 곁가지 잘라내기
+    for (let k = 1; k < br.length; k++) {
+      const b = br[k];
+      if (b.skel.length < minLen && b.juncs > 0 && b.ends > 0) { for (const q of b.skel) sk[q] = 0; pruned++; }
+    }
+    if (!pruned) break;
+  }
+  // 뼈대에서 잉크 전체로 번져 나가며 각 픽셀이 어느 획인지 정함
+  const q = new Int32Array(n); let qh = 0, qt = 0;
+  for (let i = 0; i < n; i++) if (lab[i]) q[qt++] = i;
+  while (qh < qt) {
+    const i = q[qh++], L = lab[i], x = i % w;
+    for (const o of OFF) {
+      const r = i + o; if (r < 0 || r >= n) continue;
+      const rx = r % w; if (rx - x > 1 || x - rx > 1) continue;
+      if (mask[r] && !lab[r]) { lab[r] = L; q[qt++] = r; }
+    }
+  }
+  return { lab, br };
 }
 
 /* ---------- 원근 보정 ---------- */
@@ -431,12 +535,57 @@ function warp(src, q) {
 /* ---------- 페이지 ---------- */
 function newPage(canvas, name, sample) {
   return { id: ++uid, name, sample: !!sample, orig: canvas, corners: fullCorners(canvas), src: canvas,
-           opt: { ...DEFAULTS }, strokes: [], base: null, final: null, thumb: null, othumb: null, busy: true };
+           opt: { ...DEFAULTS }, ops: [], base: null, final: null, thumb: null, othumb: null, busy: true };
+}
+// 편집 기록(ops): 지우개로 문지른 선 {type:'brush'}, 지운 픽셀 목록 {type:'px'} (획 지우기·AI 지우기),
+// 되살리기 붓 {type:'restore'} — 적힌 순서대로 다시 그린다
+function applyOne(p, x, op) {
+  if (op.type === 'brush') drawStroke(x, op);
+  else if (op.type === 'restore') {
+    const pts = op.pts.length === 1 ? [op.pts[0], [op.pts[0][0] + 0.01, op.pts[0][1]]] : op.pts;
+    // 붓 자리만 잘라 청소 직후 모습을 다시 그림
+    const m = makeCanvas(x.canvas.width, x.canvas.height), mx = m.getContext('2d');
+    mx.strokeStyle = '#000'; mx.lineCap = 'round'; mx.lineJoin = 'round'; mx.lineWidth = op.size;
+    mx.beginPath(); mx.moveTo(pts[0][0], pts[0][1]); for (const q of pts) mx.lineTo(q[0], q[1]); mx.stroke();
+    mx.globalCompositeOperation = 'source-in'; mx.drawImage(p.base, 0, 0);
+    x.drawImage(m, 0, 0);
+  } else if (op.type === 'px') {
+    const im = x.getImageData(0, 0, x.canvas.width, x.canvas.height), d = im.data;
+    for (const i of op.idx) { d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = 255; }
+    x.putImageData(im, 0, 0);
+  }
 }
 function compose(p) {
-  const f = copyCanvas(p.base), x = f.getContext('2d');
-  for (const s of p.strokes) drawStroke(x, s);
+  const f = copyCanvas(p.base), x = ctx2d(f);
+  for (const op of p.ops) applyOne(p, x, op);
   p.final = f;
+}
+function applyOp(p, op) {
+  p.ops.push(op);
+  applyOne(p, ctx2d(p.final), op);
+  p.thumb = smallCopy(p.final);
+}
+// 지울 획 둘레의 옅은 번짐(연필 가루, 흐린 테두리)까지 함께 지움. 다른 진한 잉크는 건드리지 않음
+function withHalo(p, idx, r) {
+  if (!idx.length) return idx;
+  const f = p.final, W = f.width, H = f.height;
+  let x0 = W, y0 = H, x1 = 0, y1 = 0;
+  for (const i of idx) { const x = i % W, y = (i / W) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  x0 = Math.max(0, x0 - r); y0 = Math.max(0, y0 - r); x1 = Math.min(W - 1, x1 + r); y1 = Math.min(H - 1, y1 + r);
+  const w = x1 - x0 + 1, h = y1 - y0 + 1, d = ctx2d(f).getImageData(x0, y0, w, h).data;
+  const on = new Uint8Array(w * h);
+  for (const i of idx) on[(((i / W) | 0) - y0) * w + (i % W) - x0] = 1;
+  const out = Array.from(idx);
+  for (const i of idx) {
+    const cx = (i % W) - x0, cy = ((i / W) | 0) - y0;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= w || y >= h) continue;
+      const q = y * w + x; if (on[q]) continue;
+      if (0.299 * d[q * 4] + 0.587 * d[q * 4 + 1] + 0.114 * d[q * 4 + 2] < 215) continue;
+      on[q] = 1; out.push((y + y0) * W + x + x0);
+    }
+  }
+  return Uint32Array.from(out);
 }
 function drawStroke(x, s) {
   x.strokeStyle = '#fff'; x.fillStyle = '#fff'; x.lineCap = 'round'; x.lineJoin = 'round'; x.lineWidth = s.size;
@@ -485,7 +634,7 @@ function renderGrid() {
     th.setAttribute('aria-label', `${i + 1}쪽 편집`);
     if (p.othumb) { p.othumb.className = 'orig'; th.append(p.thumb, p.othumb); }
     if (p.sample) { const t = document.createElement('span'); t.className = 'tag'; t.textContent = '예시'; th.append(t); }
-    if (p.busy) { const b = document.createElement('span'); b.className = 'busy'; b.textContent = '청소 중…'; th.append(b); }
+    if (p.busy || p.ai) { const b = document.createElement('span'); b.className = 'busy'; b.textContent = p.busy ? '청소 중…' : p.ai; th.append(b); }
     th.addEventListener('click', () => { if (!p.busy) openEditor(p); });
     const foot = document.createElement('div'); foot.className = 'foot';
     foot.innerHTML = `<span class="pno">${i + 1}쪽</span>
@@ -510,6 +659,7 @@ function renderGrid() {
   add.addEventListener('click', pickFiles);
   grid.append(add);
   $('#hint').hidden = !pages.some(p => p.sample);
+  if (typeof syncAiUi === 'function') syncAiUi();
 }
 function updateBar() {
   const n = pages.length, busy = pages.some(p => p.busy);
@@ -586,7 +736,7 @@ document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; $('#drop').hidden = true; addFiles([...(e.dataTransfer?.files || [])]); });
 
 /* ---------- 편집 화면 ---------- */
-const ed = { page: null, tool: 'erase', zoom: 1, peek: false, corners: null, stroke: null };
+const ed = { page: null, tool: 'tap', zoom: 1, peek: false, corners: null, stroke: null };
 const edCanvas = $('#edCanvas'), sheet = $('#sheet'), stage = $('#stage'), cropEl = $('#crop');
 function openEditor(p) {
   ed.page = p; ed.zoom = 1; ed.peek = false;
@@ -595,7 +745,8 @@ function openEditor(p) {
   $('#rmColor').checked = p.opt.removeColor;
   $('#editor').hidden = false;
   document.body.style.overflow = 'hidden';
-  setTool('erase');
+  setTool('tap');
+  syncAiUi();
   edRedraw();
 }
 function closeEditor() {
@@ -629,8 +780,8 @@ function setTool(t) {
   if (ed.tool === 'crop' && t !== 'crop') ed.corners = null;
   ed.tool = t;
   document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === t)));
-  document.querySelectorAll('[data-for]').forEach(r => { r.hidden = r.dataset.for !== t; });
-  stage.classList.toggle('erase', t === 'erase');
+  document.querySelectorAll('[data-for]').forEach(r => { r.hidden = !r.dataset.for.split(' ').includes(t); });
+  stage.classList.toggle('erase', t === 'erase' || t === 'restore');
   cropEl.hidden = t !== 'crop';
   $('#peekBtn').hidden = t === 'crop';
   if (t === 'crop') { ed.zoom = 1; ed.corners = ed.page.corners.map(q => q.slice()); }
@@ -654,31 +805,74 @@ function toImg(e) {
   const r = edCanvas.getBoundingClientRect();
   return [(e.clientX - r.left) * edCanvas.width / r.width, (e.clientY - r.top) * edCanvas.height / r.height];
 }
+function paintLive(pts) {
+  const x = edCanvas.getContext('2d'), s = ed.stroke;
+  if (!s.restore) { drawStroke(x, { size: s.size, pts }); return; }
+  applyOne(ed.page, x, { type: 'restore', size: s.size, pts });
+}
 function brushSize() { const r = edCanvas.getBoundingClientRect(); return +$('#brush').value * edCanvas.width / r.width; }
 edCanvas.addEventListener('pointerdown', e => {
-  if (ed.tool !== 'erase' || ed.peek || !ed.page?.final) return;
+  if ((ed.tool !== 'erase' && ed.tool !== 'restore') || ed.peek || !ed.page?.final) return;
   e.preventDefault();
   edCanvas.setPointerCapture(e.pointerId);
-  ed.stroke = { size: brushSize(), pts: [toImg(e)] };
-  drawStroke(edCanvas.getContext('2d'), ed.stroke);
+  ed.stroke = { size: brushSize(), pts: [toImg(e)], restore: ed.tool === 'restore' };
+  paintLive(ed.stroke.pts);
 });
 edCanvas.addEventListener('pointermove', e => {
   if (!ed.stroke) return;
   const pts = ed.stroke.pts; pts.push(toImg(e));
-  drawStroke(edCanvas.getContext('2d'), { size: ed.stroke.size, pts: pts.slice(-2) });
+  paintLive(pts.slice(-2));
 });
 const endStroke = () => {
   if (!ed.stroke || !ed.page) { ed.stroke = null; return; }
-  const p = ed.page; p.strokes.push(ed.stroke);
-  drawStroke(p.final.getContext('2d'), ed.stroke);
+  const p = ed.page;
+  applyOp(p, { type: ed.stroke.restore ? 'restore' : 'brush', size: ed.stroke.size, pts: ed.stroke.pts });
   ed.stroke = null;
-  p.thumb = smallCopy(p.final);
+  edRedraw();
 };
 edCanvas.addEventListener('pointerup', endStroke);
 edCanvas.addEventListener('pointercancel', endStroke);
+
+// 획 지우기: 누른 곳의 한 획만 지운다
+const INK = (d, i) => 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2] < 215;
+const COLORED = (d, i) => Math.max(d[i * 4], d[i * 4 + 1], d[i * 4 + 2]) - Math.min(d[i * 4], d[i * 4 + 1], d[i * 4 + 2]) > 40;
+function strokeAt(p, ix, iy) {
+  const f = p.final, W = f.width, H = f.height, R = 320;
+  const x0 = Math.max(0, Math.round(ix - R)), y0 = Math.max(0, Math.round(iy - R));
+  const x1 = Math.min(W, Math.round(ix + R)), y1 = Math.min(H, Math.round(iy + R));
+  const w = x1 - x0, h = y1 - y0; if (w < 3 || h < 3) return null;
+  const d = ctx2d(f).getImageData(x0, y0, w, h).data;
+  const tx = Math.round(ix - x0), ty = Math.round(iy - y0), reach = Math.max(8, Math.round(brushSize() * 0.4));
+  let best = -1, bd = 1e9;
+  for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
+    const x = tx + dx, y = ty + dy; if (x < 0 || y < 0 || x >= w || y >= h) continue;
+    const i = y * w + x, dd = dx * dx + dy * dy;
+    if (dd < bd && INK(d, i)) { bd = dd; best = i; }
+  }
+  if (best < 0) return null;
+  const col = COLORED(d, best);
+  const mask = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) mask[i] = INK(d, i) && COLORED(d, i) === col ? 1 : 0;
+  const { lab } = segment(mask, w, h, 6);
+  const L = lab[best]; if (!L) return null;
+  const idx = [];
+  for (let i = 0; i < w * h; i++) if (lab[i] === L) idx.push((y0 + ((i / w) | 0)) * W + x0 + (i % w));
+  return Uint32Array.from(idx);
+}
+let tapStart = null;
+edCanvas.addEventListener('pointerdown', e => { if (ed.tool === 'tap') tapStart = [e.clientX, e.clientY]; });
+edCanvas.addEventListener('click', e => {
+  if (ed.tool !== 'tap' || ed.peek || !ed.page?.final || ed.page.busy) return;
+  if (tapStart && Math.hypot(e.clientX - tapStart[0], e.clientY - tapStart[1]) > 10) return;   // 끌어서 옮긴 것은 무시
+  const [ix, iy] = toImg(e);
+  const idx = strokeAt(ed.page, ix, iy);
+  if (!idx) { toast('여기에는 지울 선이 없어요. 선 위를 눌러 주세요.'); return; }
+  applyOp(ed.page, { type: 'px', idx: withHalo(ed.page, idx, 3) });
+  edRedraw();
+});
 $('#undoBtn').addEventListener('click', () => {
-  const p = ed.page; if (!p?.strokes.length) return;
-  p.strokes.pop(); compose(p); p.thumb = smallCopy(p.final); edRedraw();
+  const p = ed.page; if (!p?.ops.length) return;
+  p.ops.pop(); compose(p); p.thumb = smallCopy(p.final); edRedraw();
 });
 
 // 설정
@@ -698,9 +892,9 @@ $('#rotBtn').addEventListener('click', () => {
   const q = p.corners;
   p.corners = [rot(q[3]), rot(q[0]), rot(q[1]), rot(q[2])];
   p.orig = c; p.srcReady = false;
-  if (p.strokes.length) toast('돌리면서 지우개 자국은 처음으로 돌아갔어요');
-  p.strokes = [];
-  if (ed.tool === 'crop') setTool('erase');
+  if (p.ops.length) toast('돌리면서 지운 기록은 처음으로 돌아갔어요');
+  p.ops = [];
+  if (ed.tool === 'crop') setTool('tap');
   schedule(p);
 });
 
@@ -730,11 +924,205 @@ $('#cropReset').addEventListener('click', () => { ed.corners = fullCorners(ed.pa
 $('#cropApply').addEventListener('click', () => {
   const p = ed.page;
   p.corners = ed.corners.map(q => q.slice()); p.srcReady = false;
-  if (p.strokes.length) toast('자르면서 지우개 자국은 처음으로 돌아갔어요');
-  p.strokes = [];
-  setTool('erase');
+  if (p.ops.length) toast('자르면서 지운 기록은 처음으로 돌아갔어요');
+  p.ops = [];
+  setTool('tap');
   schedule(p);
 });
+
+/* ---------- AI로 필기 지우기 ----------
+   1) 쪽 사진을 Claude에게 보여 주고 손으로 쓴 표시가 있는 곳의 상자를 받는다
+   2) 상자 안의 잉크를 갈림길에서 끊어 한 획씩 나누고, 획마다 작은 그림(사진 | 그 획만 초록색)을 만든다
+   3) 그림들을 번호 붙여 한 장에 모아 다시 보여 주고, 손글씨인 번호만 받아서 그 획들을 지운다 */
+const aiReady = (async () => {
+  try {
+    if (!window.claude || typeof window.claude.use !== 'function') return null;
+    const sample = await window.claude.use('sample'); if (!sample) return null;
+    const lim = await sample.limits().catch(() => null);
+    return lim && lim.images ? { sample, maxImages: Math.max(1, Math.min(4, lim.images.maxCount || 1)) } : null;
+  } catch (e) { return null; }
+})();
+let ai = null, aiRun = null;
+aiReady.then(v => { ai = v; syncAiUi(); });
+function syncAiUi() {
+  $('#aiAll').hidden = !ai || !pages.length;
+  $('#aiRow').hidden = !ai;
+  const p = ed.page, running = !!aiRun;
+  $('#aiOne').disabled = running || !p || p.busy;
+  $('#aiAll').disabled = running;
+  $('#aiStop').hidden = !running;
+  if (p) $('#aiStatus').textContent = p.ai || p.aiNote || '';
+}
+const toBlob = c => new Promise(r => c.toBlob(r, 'image/jpeg', 0.9));
+const PROMPT_FIND = `You are helping erase a student's handwriting from a photographed printed worksheet page (usually a Korean school workbook or exam).
+The image is the photo with a light-blue coordinate grid drawn over it. x runs from 0 (left edge of the photo) to 1000 (right edge) and y from 0 (top edge) to 1000 (bottom edge), with gridlines every 100 and labels at the edges. The grid is not part of the page.
+Find EVERY mark a person added by hand: pencil or pen writing and calculations, circled answers or letters, check marks, X or slash marks, underlines, stars, scores, arrows, doodles, lines traced over a printed graph, colored-pencil or red-pen grading marks, highlighter.
+Do NOT report printed content: printed text, numbers, formulas, figures, graphs, tables, boxes, logos, printed colored headings or badges. Ignore anything outside the paper.
+For each mark give "box": [x0, y0, x1, y1] in grid units that fully encloses the mark (leave a little room rather than cutting it off), "ink": one of "pencil", "black pen", "red", "blue", "other color", "highlighter", and "overlap": true if the mark touches or crosses printed content, false if it sits only on blank paper.
+Reply with only JSON like {"marks":[{"box":[120,80,210,160],"ink":"pencil","overlap":true}]}. Reply {"marks":[]} if there is no handwriting.`;
+const promptJudge = (a, b) => `These images are sheets of numbered tiles cut from a photographed printed worksheet page that a student marked up by hand.
+In each tile the LEFT half is the photo and the RIGHT half is the same spot with ONE stroke highlighted in bright green (other ink is shown faded gray).
+For each tile decide whether the green stroke is HANDWRITTEN (added by a person: part of a pencil or pen circle, check mark, X, underline, star, arrow, handwritten digit, letter or calculation, a line traced over a printed graph, a colored-pencil or pen grading mark) or PRINTED (part of printed text, a formula, a printed symbol, figure, graph, table line or box border).
+If the green stroke is mostly handwriting with a small printed bit attached, count it as handwritten. If it is a printed character that a handwritten line merely touches, count it as printed.
+The tiles in this request are numbered ${a} to ${b}. Reply with only JSON: {"handwritten":[tile numbers]} listing every tile whose green stroke is handwritten.`;
+
+function overview(src) {
+  const L = 1150, s = L / Math.max(src.width, src.height);
+  const W = Math.round(src.width * s), H = Math.round(src.height * s), M = 30;
+  const c = makeCanvas(W + 2 * M, H + 2 * M), x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  x.imageSmoothingQuality = 'high'; x.drawImage(src, M, M, W, H);
+  x.strokeStyle = 'rgba(0,150,255,0.35)'; x.lineWidth = 1;
+  x.fillStyle = '#0070c0'; x.font = 'bold 12px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  for (let k = 0; k <= 10; k++) {
+    const gx = M + W * k / 10, gy = M + H * k / 10;
+    x.beginPath(); x.moveTo(gx, M); x.lineTo(gx, M + H); x.moveTo(M, gy); x.lineTo(M + W, gy); x.stroke();
+    x.fillText(k * 100, gx, M / 2); x.fillText(k * 100, gx, M + H + M / 2);
+    x.fillText(k * 100, M / 2, gy); x.fillText(k * 100, M + W + M / 2, gy);
+  }
+  return c;
+}
+function mergeBoxes(bs) {
+  for (let again = true; again;) {
+    again = false;
+    outer: for (let a = 0; a < bs.length; a++) for (let b = a + 1; b < bs.length; b++) {
+      const A = bs[a], B = bs[b];
+      if (A.col !== B.col || A.overlap !== B.overlap) continue;
+      if (A.x0 <= B.x1 && B.x0 <= A.x1 && A.y0 <= B.y1 && B.y0 <= A.y1) {
+        A.x0 = Math.min(A.x0, B.x0); A.y0 = Math.min(A.y0, B.y0); A.x1 = Math.max(A.x1, B.x1); A.y1 = Math.max(A.y1, B.y1);
+        bs.splice(b, 1); again = true; break outer;
+      }
+    }
+  }
+  return bs;
+}
+function roiMask(p, b) {
+  const W = p.final.width, x0 = b.x0, y0 = b.y0, w = b.x1 - b.x0, h = b.y1 - b.y0;
+  const d = ctx2d(p.final).getImageData(x0, y0, w, h).data, mask = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) mask[i] = INK(d, i) && COLORED(d, i) === b.col ? 1 : 0;
+  const toPage = i => (y0 + ((i / w) | 0)) * W + x0 + (i % w);
+  return { w, h, mask, toPage };
+}
+function tiles(p, cands, first) {
+  const T = 140, CW = 2 * T + 16, CH = T + 26, COLS = 4, ROWS = 7, per = COLS * ROWS, sheets = [];
+  const W = p.final.width, H = p.final.height;
+  for (let s = 0; s < cands.length; s += per) {
+    const part = cands.slice(s, s + per), rows = Math.ceil(part.length / COLS);
+    const c = makeCanvas(COLS * CW + 8, rows * CH + 8), x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+    part.forEach((k, j) => {
+      const X = 8 + (j % COLS) * CW, Y = 4 + ((j / COLS) | 0) * CH;
+      const bw = k.x1 - k.x0, bh = k.y1 - k.y0, side = Math.min(Math.max(W, H), Math.round(Math.max(bw, bh) * 1.5 + 40));
+      const cx0 = Math.max(0, Math.min(W - side, Math.round((k.x0 + k.x1 - side) / 2)));
+      const cy0 = Math.max(0, Math.min(H - side, Math.round((k.y0 + k.y1 - side) / 2)));
+      const sw = Math.min(side, W - cx0), sh = Math.min(side, H - cy0);
+      x.drawImage(p.src, cx0, cy0, sw, sh, X, Y + 22, T * sw / side, T * sh / side);
+      const hc = makeCanvas(sw, sh), hx = ctx2d(hc);
+      hx.drawImage(p.final, cx0, cy0, sw, sh, 0, 0, sw, sh);
+      const im = hx.getImageData(0, 0, sw, sh), d = im.data;
+      for (let i = 0; i < d.length; i += 4) { const l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2], v = 255 - (255 - l) * 0.3; d[i] = d[i + 1] = d[i + 2] = v; }
+      for (const pi of k.idx) {
+        const px = (pi % W) - cx0, py = ((pi / W) | 0) - cy0;
+        if (px < 0 || py < 0 || px >= sw || py >= sh) continue;
+        const q = (py * sw + px) * 4; d[q] = 0; d[q + 1] = 200; d[q + 2] = 70;
+      }
+      hx.putImageData(im, 0, 0);
+      x.drawImage(hc, X + T + 6, Y + 22, T * sw / side, T * sh / side);
+      x.strokeStyle = '#999'; x.lineWidth = 1; x.strokeRect(X - 0.5, Y + 21.5, 2 * T + 7, T + 1);
+      x.fillStyle = '#FFD400'; x.fillRect(X, Y, 44, 20);
+      x.fillStyle = '#000'; x.font = 'bold 16px sans-serif'; x.textBaseline = 'middle'; x.fillText(String(first + s + j), X + 6, Y + 11);
+    });
+    sheets.push(c);
+  }
+  return sheets;
+}
+async function aiClean(p, signal) {
+  const say = t => { p.ai = t; renderGrid(); syncAiUi(); };
+  const W = p.final.width, H = p.final.height;
+  say('필기 위치를 찾는 중…');
+  const found = await ai.sample.json(PROMPT_FIND, { images: [await toBlob(overview(p.src))], signal });
+  const marks = Array.isArray(found && found.marks) ? found.marks : [];
+  if (!pages.includes(p)) return 0;
+  const pad = Math.round(Math.max(W, H) * 0.02);
+  const boxes = mergeBoxes(marks.map(m => {
+    const b = (Array.isArray(m && m.box) ? m.box : []).map(Number);
+    if (b.length !== 4 || b.some(v => !isFinite(v))) return null;
+    const x0 = Math.max(0, Math.round(Math.min(b[0], b[2]) / 1000 * W) - pad), x1 = Math.min(W, Math.round(Math.max(b[0], b[2]) / 1000 * W) + pad);
+    const y0 = Math.max(0, Math.round(Math.min(b[1], b[3]) / 1000 * H) - pad), y1 = Math.min(H, Math.round(Math.max(b[1], b[3]) / 1000 * H) + pad);
+    if (x1 - x0 < 4 || y1 - y0 < 4) return null;
+    return { x0, y0, x1, y1, col: !/pencil|black|gray|grey/i.test(String(m.ink || 'pencil')), overlap: m.overlap !== false };
+  }).filter(Boolean));
+  if (!boxes.length) return 0;
+
+  const erase = new Uint8Array(W * H), cands = [];
+  for (const b of boxes) {
+    const { w, h, mask, toPage } = roiMask(p, b);
+    const { lab, br } = segment(mask, w, h, 6);
+    const groups = new Map();
+    for (let i = 0; i < w * h; i++) {
+      const L = lab[i]; if (!L) continue;
+      let g = groups.get(L); if (!g) { g = { idx: [], x0: 1e9, y0: 1e9, x1: -1, y1: -1, edge: false }; groups.set(L, g); }
+      const x = i % w, y = (i / w) | 0;
+      g.idx.push(toPage(i));
+      if (x < g.x0) g.x0 = x; if (x > g.x1) g.x1 = x; if (y < g.y0) g.y0 = y; if (y > g.y1) g.y1 = y;
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) g.edge = true;
+    }
+    for (const g of groups.values()) {
+      if (g.idx.length < 12) continue;
+      g.x0 += b.x0; g.x1 += b.x0; g.y0 += b.y0; g.y1 += b.y0;
+      // 빈 종이 위의 필기라고 했으면 상자 안에 온전히 들어간 획은 바로 지운다
+      if (!b.overlap) { if (!g.edge) for (const i of g.idx) erase[i] = 1; continue; }
+      cands.push(g);
+    }
+  }
+  const MAXC = 28 * 7 * ai.maxImages;
+  if (cands.length > MAXC) cands.sort((a, b) => b.idx.length - a.idx.length).length = MAXC;
+  const per = 28 * ai.maxImages;
+  for (let s = 0; s < cands.length; s += per) {
+    if (!pages.includes(p)) return 0;
+    const part = cands.slice(s, s + per);
+    say(`획 ${cands.length}개 중 ${s + 1}–${s + part.length}번 확인 중…`);
+    const blobs = await Promise.all(tiles(p, part, s + 1).map(toBlob));
+    const res = await ai.sample.json(promptJudge(s + 1, s + part.length), { images: blobs, signal });
+    const hand = Array.isArray(res && res.handwritten) ? res.handwritten : [];
+    for (const n of hand) { const k = cands[Number(n) - 1]; if (k && Number(n) > s && Number(n) <= s + part.length) for (const i of k.idx) erase[i] = 1; }
+  }
+  const idx = []; for (let i = 0; i < erase.length; i++) if (erase[i]) idx.push(i);
+  if (idx.length) applyOp(p, { type: 'px', idx: withHalo(p, idx, 3), ai: true });
+  return idx.length;
+}
+function aiErrorText(e) {
+  const c = e && e.code;
+  if (c === 'not_granted' || c === 'sampling_disabled' || c === 'not_declared' || c === 'capability_disabled' || c === 'capability_removed' || c === 'images_unavailable') { ai = null; return 'Claude 사용이 허용되지 않아 AI 지우기를 쓸 수 없어요. 획 지우기로 지워 주세요.'; }
+  if (c === 'rate_limited') return 'Claude 사용량이 잠시 막혔어요. 조금 뒤에 다시 눌러 주세요.';
+  if (c === 'session_expired') return 'Claude에 다시 로그인한 뒤 눌러 주세요.';
+  return 'AI 답을 받지 못했어요. 다시 눌러 보세요.';
+}
+async function runAi(list) {
+  if (!ai || aiRun) return;
+  const ctl = new AbortController(); aiRun = ctl; syncAiUi();
+  let total = 0, done = 0;
+  try {
+    for (const p of list) {
+      if (ctl.signal.aborted) break;
+      while (p.busy) await tick();
+      p.aiNote = '';
+      const n = await aiClean(p, ctl.signal);
+      p.ai = ''; p.aiNote = n ? '필기를 지웠어요. 남은 선은 획 지우기로 눌러 지우고, 잘못 지웠으면 되돌리기를 누르세요.' : '손글씨를 찾지 못했어요.';
+      total += n; done++;
+      renderGrid(); if (ed.page === p) edRedraw();
+    }
+    toast(done > 1 ? `${done}쪽에서 AI로 필기를 지웠어요` : total ? 'AI로 필기를 지웠어요' : 'AI가 지울 손글씨를 찾지 못했어요');
+  } catch (e) {
+    for (const p of list) p.ai = '';
+    if (!(e && e.code === 'cancelled')) { const t = aiErrorText(e); toast(t); if (ed.page) ed.page.aiNote = t; }
+    renderGrid();
+  }
+  aiRun = null; syncAiUi(); updateBar();
+}
+$('#aiOne').addEventListener('click', () => ed.page && runAi([ed.page]));
+$('#aiAll').addEventListener('click', () => runAi(pages.slice()));
+$('#aiStop').addEventListener('click', () => aiRun && aiRun.abort());
 
 /* ---------- PDF 만들기 ---------- */
 let making = false;
@@ -828,7 +1216,7 @@ async function makeSample() {
   // 손으로 쓴 잉크는 종이 위에 곱해지듯 겹친다
   x.globalCompositeOperation = 'multiply';
   // 연필 풀이
-  x.fillStyle = 'rgba(70,70,78,0.6)'; x.strokeStyle = 'rgba(70,70,78,0.55)'; x.lineWidth = 3;
+  x.fillStyle = 'rgba(70,70,78,0.42)'; x.strokeStyle = 'rgba(70,70,78,0.4)'; x.lineWidth = 3;
   x.font = `62px ${pen}`;
   x.fillText('김하늘', 700, 200);
   x.fillText('= 3x² − 12x + 2x − 8', 170, 420);
