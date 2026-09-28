@@ -1,0 +1,874 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--page-->
+<title>시험지 청소기</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;600&family=Nanum+Pen+Script&display=swap">
+<style>
+:root{
+  --ground:#ECEEE9; --surface:#FFFFFF; --ink:#1B1E22; --muted:#5D646C; --line:#D0D5CD;
+  --accent:#E6B01E; --accent-ink:#1B1E22; --desk:#5E646B; --danger:#B3261E;
+  --pencil:#6E7278; --red:#D22F2A; --blue:#2A47B5;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#141619; --surface:#1E2125; --ink:#E7E8E4; --muted:#9CA2A9; --line:#33383E;
+    --accent:#F0C13B; --accent-ink:#17191C; --desk:#0C0D0F; --danger:#F2877E;
+    --pencil:#A5A9AE; --red:#F0625C; --blue:#7D96F0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#141619; --surface:#1E2125; --ink:#E7E8E4; --muted:#9CA2A9; --line:#33383E;
+  --accent:#F0C13B; --accent-ink:#17191C; --desk:#0C0D0F; --danger:#F2877E;
+  --pencil:#A5A9AE; --red:#F0625C; --blue:#7D96F0;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.6 "IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding-inline:16px;padding-block:28px 132px;-webkit-tap-highlight-color:transparent}
+.wrap{max-width:980px;margin-inline:auto;display:grid;gap:22px}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header{display:grid;gap:10px}
+h1{font:400 clamp(38px,10vw,56px)/1 "Do Hyeon","IBM Plex Sans KR",sans-serif;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1 .mark{background:linear-gradient(transparent 58%,var(--accent) 58%, var(--accent) 90%,transparent 90%);padding-inline:2px}
+.lede{margin:0;color:var(--muted);max-width:58ch}
+.keys{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0;padding:0;list-style:none;font-size:13px}
+.keys li{display:flex;align-items:center;gap:6px}
+.sw{width:22px;height:0;border-top:3px solid currentColor;border-radius:2px}
+.k-pencil{color:var(--pencil)} .k-red{color:var(--red)} .k-blue{color:var(--blue)}
+.keys .lbl{color:var(--ink)}
+.keys .keep{color:var(--ink);font-weight:600}
+.keys .keep .sw{border-top-width:4px}
+
+.status{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 12px;border-bottom:1px solid var(--line);padding-bottom:8px}
+.status h2{margin:0;font-size:15px;font-weight:600}
+.status .count{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+.hint{margin:0;font-size:13px;color:var(--muted)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden;display:grid;grid-template-rows:auto auto}
+.thumb{position:relative;display:block;width:100%;aspect-ratio:1/1.414;max-width:100%;padding:0;border:0;background:#fff;overflow:hidden}
+.thumb canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff}
+.thumb .orig{opacity:0;transition:opacity .15s}
+.thumb.peek .orig{opacity:1}
+.tag{position:absolute;left:6px;top:6px;font-size:11px;font-weight:600;letter-spacing:.04em;padding:1px 7px;border-radius:4px;background:#1B1E22;color:#fff}
+.busy{position:absolute;inset:0;display:grid;place-items:center;background:rgba(255,255,255,.72);color:#1B1E22;font-size:13px;font-weight:600}
+.foot{display:flex;align-items:center;gap:2px;padding:4px 4px 4px 10px;border-top:1px solid var(--line)}
+.pno{margin-right:auto;font-variant-numeric:tabular-nums;font-weight:600;font-size:14px}
+.ib{display:inline-grid;place-items:center;width:34px;height:34px;border:0;border-radius:6px;background:transparent;color:var(--muted)}
+.ib:hover{background:var(--ground);color:var(--ink)}
+.ib:disabled{opacity:.3;pointer-events:none}
+.ib svg{width:18px;height:18px}
+.add{display:grid;place-content:center;justify-items:center;gap:6px;aspect-ratio:1/1.414;max-width:100%;border:2px dashed var(--line);border-radius:8px;background:transparent;color:var(--muted);font-weight:600;font-size:14px;text-align:center;padding:12px}
+.add:hover{border-color:var(--accent);color:var(--ink)}
+.add svg{width:30px;height:30px}
+.add small{font-weight:400;font-size:12px}
+
+.notes{display:grid;gap:6px;font-size:13px;color:var(--muted);max-width:68ch;margin:0;padding-left:18px}
+
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line)}
+.bar-in{max-width:980px;margin-inline:auto;display:flex;gap:10px}
+.btn{min-height:48px;padding:0 18px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
+.btn svg{width:18px;height:18px}
+.btn.primary{flex:1;background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.sm{min-height:38px;padding:0 12px;font-size:14px}
+
+.toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;max-width:calc(100% - 32px);background:#1B1E22;color:#fff;border-radius:8px;padding:10px 14px;font-size:14px;display:flex;gap:14px;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.toast button{background:none;border:0;color:#F0C13B;font-weight:600;padding:0}
+
+/* 편집 화면 */
+.editor{position:fixed;inset:0;z-index:20;background:var(--ground);display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding-top:env(safe-area-inset-top,0px)}
+.ed-top{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--surface)}
+.ed-top h2{margin:0 auto 0 4px;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.zoom{display:flex;align-items:center;gap:2px;font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted)}
+.zoom span{min-width:44px;text-align:center}
+.stage{overflow:auto;background:var(--desk);display:flex;padding:16px;overscroll-behavior:contain}
+.sheet{position:relative;margin:auto;flex:none;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+.sheet canvas{display:block;width:100%;height:auto;background:#fff}
+.stage.erase canvas{touch-action:none;cursor:crosshair}
+.crop{position:absolute;inset:0;touch-action:none}
+.crop svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.crop polygon{fill:rgba(230,176,30,.12);stroke:#E6B01E;stroke-width:2;vector-effect:non-scaling-stroke}
+.handle{position:absolute;width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;border:3px solid #E6B01E;background:rgba(27,30,34,.35);touch-action:none;cursor:grab}
+.ed-tools{background:var(--surface);border-top:1px solid var(--line);padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));display:grid;gap:10px;max-height:46vh;overflow:auto}
+.ed-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:8px 14px;font-size:14px;font-weight:600;color:var(--muted);min-height:38px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}
+.field{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);flex:1 1 220px;min-width:0}
+.field input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.field output{font-variant-numeric:tabular-nums;color:var(--ink);min-width:2.5em;text-align:right}
+.check{display:flex;align-items:center;gap:8px;font-size:14px}
+.check input{width:18px;height:18px;accent-color:var(--accent)}
+.ed-note{margin:0;font-size:12px;color:var(--muted)}
+.drop{position:fixed;inset:0;z-index:40;background:rgba(230,176,30,.18);border:3px dashed var(--accent);display:grid;place-items:center;font:400 28px "Do Hyeon",sans-serif;color:var(--ink);pointer-events:none}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>시험지 <span class="mark">청소기</span></h1>
+    <p class="lede">문제지 사진을 올리면 연필 풀이, 채점 표시, 볼펜 메모를 지우고 인쇄된 문제만 남깁니다. 페이지를 다 넣고 <b>완료</b>를 누르면 한 개의 PDF로 묶어 드려요.</p>
+    <ul class="keys" aria-label="지우는 것과 남기는 것">
+      <li class="k-pencil"><span class="sw"></span><span class="lbl">연필 풀이</span></li>
+      <li class="k-red"><span class="sw"></span><span class="lbl">빨간 채점</span></li>
+      <li class="k-blue"><span class="sw"></span><span class="lbl">색 볼펜·형광펜</span></li>
+      <li class="keep"><span class="sw"></span><span>인쇄 글씨는 남김</span></li>
+    </ul>
+  </header>
+
+  <section aria-labelledby="pages-h" style="display:grid;gap:12px">
+    <div class="status">
+      <h2 id="pages-h">페이지</h2>
+      <span class="count" id="count">0쪽</span>
+    </div>
+    <p class="hint" id="hint">예시 페이지가 들어 있어요. 눌러서 편집 화면을 열고 <b>원본 보기</b>를 누르고 있으면 청소 전 모습이 보입니다. 내 페이지를 추가하면 예시는 빠집니다.</p>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <ul class="notes">
+    <li>사진은 종이가 화면에 꽉 차게, 그림자 없이 위에서 찍으면 가장 깨끗합니다. 비스듬히 찍었다면 편집 화면의 <b>자르기</b>로 네 모서리를 맞춰 펴 주세요.</li>
+    <li>검은 볼펜 필기는 인쇄 글씨와 색이 같아서 자동으로 다 지워지지 않을 수 있어요. 편집 화면의 <b>지우개</b>로 문질러 지우세요.</li>
+    <li>사진(JPG, PNG)과 PDF를 넣을 수 있어요. 모든 처리는 이 기기 안에서만 하고, 파일을 어디에도 보내지 않습니다.</li>
+  </ul>
+</div>
+
+<div class="bar">
+  <div class="bar-in">
+    <button class="btn" id="addBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>페이지 추가</button>
+    <button class="btn primary" id="doneBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span id="doneLbl">완료 · PDF 만들기</span></button>
+  </div>
+</div>
+<input type="file" id="fileIn" accept="image/*,application/pdf,.pdf" multiple hidden>
+
+<div class="editor" id="editor" hidden role="dialog" aria-modal="true" aria-labelledby="edTitle">
+  <div class="ed-top">
+    <button class="ib" id="edBack" type="button" aria-label="목록으로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h2 id="edTitle">1쪽 편집</h2>
+    <div class="zoom">
+      <button class="ib" id="zOut" type="button" aria-label="축소"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+      <span id="zLbl">100%</span>
+      <button class="ib" id="zIn" type="button" aria-label="확대"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+    </div>
+  </div>
+  <div class="stage erase" id="stage">
+    <div class="sheet" id="sheet">
+      <canvas id="edCanvas" width="10" height="10"></canvas>
+      <div class="crop" id="crop" hidden>
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none"><polygon id="cropPoly" points=""/></svg>
+      </div>
+    </div>
+  </div>
+  <div class="ed-tools">
+    <div class="ed-row">
+      <div class="seg" role="group" aria-label="도구">
+        <button type="button" data-tool="erase" aria-pressed="true">지우개</button>
+        <button type="button" data-tool="pan" aria-pressed="false">이동</button>
+        <button type="button" data-tool="crop" aria-pressed="false">자르기</button>
+      </div>
+      <button class="btn sm" id="peekBtn" type="button">원본 보기</button>
+    </div>
+    <div class="ed-row" data-for="erase">
+      <label class="field" for="brush">지우개 크기 <input type="range" id="brush" min="8" max="160" value="44"><output id="brushOut">44</output></label>
+      <button class="btn sm" id="undoBtn" type="button">되돌리기</button>
+    </div>
+    <div class="ed-row" data-for="pan" hidden>
+      <p class="ed-note">확대한 뒤 손가락으로 끌어 옮겨 보세요. 지울 곳을 찾았으면 지우개로 돌아가세요.</p>
+    </div>
+    <div class="ed-row" data-for="crop" hidden>
+      <p class="ed-note" style="flex:1 1 200px">노란 점 네 개를 종이 모서리에 맞추면 비스듬한 사진을 반듯하게 폅니다.</p>
+      <button class="btn sm" id="cropReset" type="button">처음대로</button>
+      <button class="btn sm" id="cropApply" type="button" style="background:var(--accent);color:var(--accent-ink);border-color:transparent">자르기 적용</button>
+    </div>
+    <div class="ed-row">
+      <label class="field" for="strength">지우는 세기 <input type="range" id="strength" min="0" max="100" value="50"><output id="strengthOut">50</output></label>
+      <label class="check" for="rmColor"><input type="checkbox" id="rmColor" checked>색 있는 표시 지우기</label>
+    </div>
+    <div class="ed-row">
+      <button class="btn sm" id="rotBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>오른쪽으로 돌리기</button>
+      <button class="btn sm" id="applyAll" type="button">이 설정을 모든 쪽에</button>
+    </div>
+    <p class="ed-note">세기를 올리면 진한 연필 자국까지 지우고, 인쇄 글씨가 흐려지면 내리세요. 컬러로 인쇄된 문제라면 ‘색 있는 표시 지우기’를 끄세요.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden role="status"><span id="toastMsg"></span><button id="toastAct" type="button" hidden></button></div>
+<div class="drop" id="drop" hidden>여기에 놓으면 페이지로 추가돼요</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const MAX_SIDE = 2400;
+const DEFAULTS = { strength: 50, removeColor: true };
+const tick = () => new Promise(r => setTimeout(r, 16));
+const ICON = {
+  left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  right: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'
+};
+
+let pages = [];
+let uid = 0;
+
+/* ---------- 캔버스 도우미 ---------- */
+function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+function ctx2d(c) { return c.getContext('2d', { willReadFrequently: true }); }
+function copyCanvas(src) { const c = makeCanvas(src.width, src.height); c.getContext('2d').drawImage(src, 0, 0); return c; }
+function fitToCanvas(src, w, h) {
+  const s = Math.min(1, MAX_SIDE / Math.max(w, h));
+  const c = makeCanvas(Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s)));
+  const x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  x.imageSmoothingQuality = 'high';
+  x.drawImage(src, 0, 0, c.width, c.height);
+  return c;
+}
+function fullCorners(c) { return [[0, 0], [c.width, 0], [c.width, c.height], [0, c.height]]; }
+function isFull(p) {
+  const f = fullCorners(p.orig);
+  return p.corners.every((q, i) => Math.abs(q[0] - f[i][0]) < 1 && Math.abs(q[1] - f[i][1]) < 1);
+}
+
+/* ---------- 청소 알고리즘 ----------
+   1) 종이 바탕(조명·그림자)을 넓게 추정해 나눠서 밝기를 평평하게 만든다
+   2) 색이 뚜렷한 획(빨간 채점, 파란 펜, 형광펜)은 버린다
+   3) 남은 어두운 획을 덩어리로 묶고, 인쇄 잉크만큼 진한 픽셀이 충분한 덩어리만 남긴다
+      (연필은 인쇄 잉크보다 옅어서 진한 픽셀이 거의 없다) */
+function boxMax(a, w, h, r) {
+  const t = new Float32Array(a.length), o = new Float32Array(a.length);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let m = 0; const x0 = Math.max(0, x - r), x1 = Math.min(w - 1, x + r);
+    for (let k = x0; k <= x1; k++) { const v = a[y * w + k]; if (v > m) m = v; }
+    t[y * w + x] = m;
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let m = 0; const y0 = Math.max(0, y - r), y1 = Math.min(h - 1, y + r);
+    for (let k = y0; k <= y1; k++) { const v = t[k * w + x]; if (v > m) m = v; }
+    o[y * w + x] = m;
+  }
+  return o;
+}
+function boxBlur(a, w, h, r) {
+  const t = new Float32Array(a.length), o = new Float32Array(a.length);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let s = 0, n = 0; const x0 = Math.max(0, x - r), x1 = Math.min(w - 1, x + r);
+    for (let k = x0; k <= x1; k++) { s += a[y * w + k]; n++; }
+    t[y * w + x] = s / n;
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let s = 0, n = 0; const y0 = Math.max(0, y - r), y1 = Math.min(h - 1, y + r);
+    for (let k = y0; k <= y1; k++) { s += t[k * w + x]; n++; }
+    o[y * w + x] = s / n;
+  }
+  return o;
+}
+
+function cleanPage(src, opt) {
+  const w = src.width, h = src.height, n = w * h;
+  const px = ctx2d(src).getImageData(0, 0, w, h).data;
+
+  // 1) 종이 바탕 추정 (8px 칸마다 가장 밝은 값 → 넓게 퍼뜨림)
+  const S = 8, sw = Math.ceil(w / S), sh = Math.ceil(h / S), sn = sw * sh;
+  let R = new Float32Array(sn), G = new Float32Array(sn), B = new Float32Array(sn);
+  for (let y = 0; y < h; y++) {
+    const row = ((y / S) | 0) * sw;
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4, b = row + ((x / S) | 0);
+      if (px[i] > R[b]) R[b] = px[i];
+      if (px[i + 1] > G[b]) G[b] = px[i + 1];
+      if (px[i + 2] > B[b]) B[b] = px[i + 2];
+    }
+  }
+  R = boxMax(R, sw, sh, 2); G = boxMax(G, sw, sh, 2); B = boxMax(B, sw, sh, 2);
+  // 큰 검은 면(책상, 굵은 제목 띠)은 바탕으로 착각하지 않도록 종이 색으로 채움
+  const L = new Float32Array(sn);
+  for (let i = 0; i < sn; i++) L[i] = 0.299 * R[i] + 0.587 * G[i] + 0.114 * B[i];
+  const sorted = Float32Array.from(L).sort();
+  const p75 = sorted[Math.floor(sn * 0.75)];
+  let pr = 0, pg = 0, pb = 0, pc = 0;
+  for (let i = 0; i < sn; i++) if (L[i] >= p75) { pr += R[i]; pg += G[i]; pb += B[i]; pc++; }
+  pr /= pc; pg /= pc; pb /= pc;
+  for (let i = 0; i < sn; i++) if (L[i] < p75 * 0.62) { R[i] = pr; G[i] = pg; B[i] = pb; }
+  R = boxBlur(R, sw, sh, 2); G = boxBlur(G, sw, sh, 2); B = boxBlur(B, sw, sh, 2);
+  const small = makeCanvas(sw, sh), sd = small.getContext('2d').createImageData(sw, sh);
+  for (let i = 0; i < sn; i++) { sd.data[i * 4] = R[i]; sd.data[i * 4 + 1] = G[i]; sd.data[i * 4 + 2] = B[i]; sd.data[i * 4 + 3] = 255; }
+  small.getContext('2d').putImageData(sd, 0, 0);
+  const big = makeCanvas(w, h), bx = ctx2d(big);
+  bx.imageSmoothingEnabled = true; bx.imageSmoothingQuality = 'high';
+  bx.drawImage(small, 0, 0, sw * S, sh * S);
+  const bg = bx.getImageData(0, 0, w, h).data;
+
+  // 2) 픽셀 분류
+  const T = 0.35 + opt.strength / 100 * 0.4;          // 이보다 진하면 '인쇄 잉크급'
+  const LOW = Math.min(0.2, T - 0.12);                  // 이보다 옅으면 종이
+  const cls = new Uint8Array(n);                        // 0 종이, 1 옅은 획, 2 진한 획
+  const tone = new Uint8Array(n);
+  for (let i = 0, j = 0; i < n; i++, j += 4) {
+    const r = Math.min(1, px[j] / Math.max(24, bg[j]));
+    const g = Math.min(1, px[j + 1] / Math.max(24, bg[j + 1]));
+    const b = Math.min(1, px[j + 2] / Math.max(24, bg[j + 2]));
+    const nl = 0.299 * r + 0.587 * g + 0.114 * b;
+    const d = 1 - nl;
+    tone[i] = Math.max(0, Math.min(255, Math.round((nl - 0.08) / 0.72 * 255)));
+    if (d < LOW) continue;
+    if (opt.removeColor) {
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      if (mx - mn > 0.17 && mx > 0.26) continue;        // 색 있는 획 (단, 아주 검은 곳은 인쇄 위에 겹친 것이라 남김)
+    }
+    cls[i] = d > T ? 2 : 1;
+  }
+
+  // 3) 연결된 덩어리 묶기 (8방향, union-find)
+  const lab = new Int32Array(n);
+  const parent = [0];
+  const find = a => { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
+  const unite = (a, b) => { a = find(a); b = find(b); if (a !== b) { if (a < b) parent[b] = a; else parent[a] = b; } };
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (!cls[i]) continue;
+      let l = 0;
+      const nb = [x > 0 ? lab[i - 1] : 0, y > 0 && x > 0 ? lab[i - w - 1] : 0, y > 0 ? lab[i - w] : 0, y > 0 && x < w - 1 ? lab[i - w + 1] : 0];
+      for (const v of nb) if (v) { if (!l) l = v; else unite(l, v); }
+      if (!l) { l = parent.length; parent.push(l); }
+      lab[i] = l;
+    }
+  }
+  const nl2 = parent.length;
+  const size = new Int32Array(nl2), core = new Int32Array(nl2), edge = new Uint8Array(nl2);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; if (!lab[i]) continue;
+    const r = find(lab[i]); lab[i] = r;
+    size[r]++; if (cls[i] === 2) core[r]++;
+    if (x === 0 || y === 0 || x === w - 1 || y === h - 1) edge[r] = 1;
+  }
+  const keep = new Uint8Array(nl2);
+  const bigEdge = n * 0.01;
+  for (let r = 1; r < nl2; r++) {
+    if (!size[r]) continue;
+    if (edge[r] && size[r] > bigEdge) continue;          // 가장자리에 붙은 큰 그림자·책상
+    keep[r] = core[r] >= 3 && core[r] >= size[r] * 0.15 ? 1 : 0;
+  }
+
+  // 옅은 픽셀은 진한 획 바로 옆(글자 테두리)일 때만 남긴다 → 글자에 닿은 연필 선도 떨어져 나감
+  const near = new Uint8Array(n), near2 = new Uint8Array(n), RN = 2;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (cls[y * w + x] !== 2) continue;
+    for (let k = Math.max(0, x - RN); k <= Math.min(w - 1, x + RN); k++) near[y * w + k] = 1;
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (!near[y * w + x]) continue;
+    for (let k = Math.max(0, y - RN); k <= Math.min(h - 1, y + RN); k++) near2[k * w + x] = 1;
+  }
+
+  const out = makeCanvas(w, h), ox = out.getContext('2d');
+  const od = ox.createImageData(w, h), o = od.data;
+  for (let i = 0, j = 0; i < n; i++, j += 4) {
+    const v = lab[i] && keep[lab[i]] && near2[i] ? tone[i] : 255;
+    o[j] = o[j + 1] = o[j + 2] = v; o[j + 3] = 255;
+  }
+  ox.putImageData(od, 0, 0);
+  return out;
+}
+
+/* ---------- 원근 보정 ---------- */
+function homography(from, to) {
+  // to(x,y) → from(x,y) 로 가는 3x3 행렬을 구함 (8원 연립방정식)
+  const A = [], bvec = [];
+  for (let k = 0; k < 4; k++) {
+    const [x, y] = to[k], [u, v] = from[k];
+    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); bvec.push(u);
+    A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); bvec.push(v);
+  }
+  for (let c = 0; c < 8; c++) {
+    let p = c; for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+    [A[c], A[p]] = [A[p], A[c]]; [bvec[c], bvec[p]] = [bvec[p], bvec[c]];
+    for (let r = 0; r < 8; r++) {
+      if (r === c) continue;
+      const f = A[r][c] / A[c][c];
+      for (let k = c; k < 8; k++) A[r][k] -= f * A[c][k];
+      bvec[r] -= f * bvec[c];
+    }
+  }
+  return bvec.map((v, i) => v / A[i][i]).concat(1);
+}
+function warp(src, q) {
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  let W = Math.round(Math.max(dist(q[0], q[1]), dist(q[3], q[2])));
+  let H = Math.round(Math.max(dist(q[0], q[3]), dist(q[1], q[2])));
+  const s = Math.min(1, MAX_SIDE / Math.max(W, H)); W = Math.max(1, Math.round(W * s)); H = Math.max(1, Math.round(H * s));
+  const m = homography(q, [[0, 0], [W, 0], [W, H], [0, H]]);
+  const sw = src.width, sh = src.height;
+  const sp = ctx2d(src).getImageData(0, 0, sw, sh).data;
+  const out = makeCanvas(W, H), od = out.getContext('2d').createImageData(W, H), o = od.data;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const z = m[6] * x + m[7] * y + m[8];
+    let u = (m[0] * x + m[1] * y + m[2]) / z, v = (m[3] * x + m[4] * y + m[5]) / z;
+    u = Math.min(sw - 1.001, Math.max(0, u)); v = Math.min(sh - 1.001, Math.max(0, v));
+    const x0 = u | 0, y0 = v | 0, fx = u - x0, fy = v - y0;
+    const i00 = (y0 * sw + x0) * 4, i10 = i00 + 4, i01 = i00 + sw * 4, i11 = i01 + 4;
+    const j = (y * W + x) * 4;
+    for (let c = 0; c < 3; c++) {
+      o[j + c] = (sp[i00 + c] * (1 - fx) + sp[i10 + c] * fx) * (1 - fy) + (sp[i01 + c] * (1 - fx) + sp[i11 + c] * fx) * fy;
+    }
+    o[j + 3] = 255;
+  }
+  out.getContext('2d').putImageData(od, 0, 0);
+  return out;
+}
+
+/* ---------- 페이지 ---------- */
+function newPage(canvas, name, sample) {
+  return { id: ++uid, name, sample: !!sample, orig: canvas, corners: fullCorners(canvas), src: canvas,
+           opt: { ...DEFAULTS }, strokes: [], base: null, final: null, thumb: null, othumb: null, busy: true };
+}
+function compose(p) {
+  const f = copyCanvas(p.base), x = f.getContext('2d');
+  for (const s of p.strokes) drawStroke(x, s);
+  p.final = f;
+}
+function drawStroke(x, s) {
+  x.strokeStyle = '#fff'; x.fillStyle = '#fff'; x.lineCap = 'round'; x.lineJoin = 'round'; x.lineWidth = s.size;
+  if (s.pts.length === 1) { x.beginPath(); x.arc(s.pts[0][0], s.pts[0][1], s.size / 2, 0, Math.PI * 2); x.fill(); return; }
+  x.beginPath(); x.moveTo(s.pts[0][0], s.pts[0][1]);
+  for (let k = 1; k < s.pts.length; k++) x.lineTo(s.pts[k][0], s.pts[k][1]);
+  x.stroke();
+}
+function smallCopy(src) {
+  const s = 420 / Math.max(src.width, src.height);
+  const c = makeCanvas(Math.round(src.width * s), Math.round(src.height * s));
+  const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(src, 0, 0, c.width, c.height);
+  return c;
+}
+
+const queue = new Set();
+let pumping = false;
+function schedule(p) { p.busy = true; queue.add(p); renderGrid(); pump(); }
+async function pump() {
+  if (pumping) return; pumping = true;
+  while (queue.size) {
+    const p = queue.values().next().value; queue.delete(p);
+    await tick();
+    if (!pages.includes(p)) continue;
+    try {
+      if (!p.srcReady) { p.src = isFull(p) ? p.orig : warp(p.orig, p.corners); p.srcReady = true; }
+      p.base = cleanPage(p.src, p.opt);
+      compose(p);
+      p.thumb = smallCopy(p.final); p.othumb = smallCopy(p.src);
+    } catch (e) { console.error(e); toast('이 페이지를 청소하지 못했어요. 사진을 다시 넣어 보세요.'); }
+    p.busy = false;
+    renderGrid();
+    if (ed.page === p) edRedraw();
+  }
+  pumping = false;
+  updateBar();
+}
+
+/* ---------- 목록 화면 ---------- */
+const grid = $('#grid');
+function renderGrid() {
+  grid.textContent = '';
+  pages.forEach((p, i) => {
+    const card = document.createElement('article'); card.className = 'card';
+    const th = document.createElement('button'); th.type = 'button'; th.className = 'thumb';
+    th.setAttribute('aria-label', `${i + 1}쪽 편집`);
+    if (p.othumb) { p.othumb.className = 'orig'; th.append(p.thumb, p.othumb); }
+    if (p.sample) { const t = document.createElement('span'); t.className = 'tag'; t.textContent = '예시'; th.append(t); }
+    if (p.busy) { const b = document.createElement('span'); b.className = 'busy'; b.textContent = '청소 중…'; th.append(b); }
+    th.addEventListener('click', () => { if (!p.busy) openEditor(p); });
+    const foot = document.createElement('div'); foot.className = 'foot';
+    foot.innerHTML = `<span class="pno">${i + 1}쪽</span>
+      <button class="ib" type="button" data-a="l" aria-label="앞으로" ${i === 0 ? 'disabled' : ''}>${ICON.left}</button>
+      <button class="ib" type="button" data-a="r" aria-label="뒤로" ${i === pages.length - 1 ? 'disabled' : ''}>${ICON.right}</button>
+      <button class="ib" type="button" data-a="d" aria-label="삭제">${ICON.trash}</button>`;
+    foot.addEventListener('click', e => {
+      const a = e.target.closest('button')?.dataset.a; if (!a) return;
+      if (a === 'l') { pages.splice(i, 1); pages.splice(i - 1, 0, p); }
+      if (a === 'r') { pages.splice(i, 1); pages.splice(i + 1, 0, p); }
+      if (a === 'd') {
+        pages.splice(i, 1);
+        toast(`${i + 1}쪽을 뺐어요`, '되돌리기', () => { pages.splice(Math.min(i, pages.length), 0, p); renderGrid(); updateBar(); });
+      }
+      renderGrid(); updateBar();
+    });
+    card.append(th, foot);
+    grid.append(card);
+  });
+  const add = document.createElement('button'); add.type = 'button'; add.className = 'add';
+  add.innerHTML = `${ICON.plus}<span>페이지 추가</span><small>사진 · PDF, 여러 장 한 번에</small>`;
+  add.addEventListener('click', pickFiles);
+  grid.append(add);
+  $('#hint').hidden = !pages.some(p => p.sample);
+}
+function updateBar() {
+  const n = pages.length, busy = pages.some(p => p.busy);
+  $('#count').textContent = `${n}쪽`;
+  const btn = $('#doneBtn');
+  btn.disabled = !n || busy || making;
+  $('#doneLbl').textContent = making ? 'PDF 만드는 중…' : busy ? '청소 중…' : n ? `완료 · ${n}쪽 PDF 만들기` : '완료 · PDF 만들기';
+}
+
+/* ---------- 파일 넣기 ---------- */
+const fileIn = $('#fileIn');
+function pickFiles() { fileIn.value = ''; fileIn.click(); }
+$('#addBtn').addEventListener('click', pickFiles);
+fileIn.addEventListener('change', () => addFiles([...fileIn.files]));
+
+function loadImg(url) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('image')); i.src = url; }); }
+function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('script')); document.head.append(s); }); }
+let pdfjs = null;
+function loadPdfjs() {
+  if (!pdfjs) {
+    const base = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+    // 워커 스크립트를 먼저 올려 두면 pdf.js가 별도 워커 없이 이 창에서 처리한다
+    pdfjs = loadScript(base + 'pdf.worker.min.js').then(() => loadScript(base + 'pdf.min.js')).then(() => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.js';
+      return window.pdfjsLib;
+    });
+    pdfjs.catch(() => { pdfjs = null; });
+  }
+  return pdfjs;
+}
+async function pdfToCanvases(file) {
+  const lib = await loadPdfjs();
+  const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const list = [];
+  for (let k = 1; k <= doc.numPages; k++) {
+    const pg = await doc.getPage(k);
+    const v1 = pg.getViewport({ scale: 1 });
+    const vp = pg.getViewport({ scale: Math.min(4, 2200 / Math.max(v1.width, v1.height)) });
+    const c = makeCanvas(Math.round(vp.width), Math.round(vp.height)), x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+    await pg.render({ canvasContext: x, viewport: vp }).promise;
+    list.push(c);
+  }
+  return list;
+}
+async function fileToCanvases(file) {
+  if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) return pdfToCanvases(file);
+  const url = URL.createObjectURL(file);
+  try { const img = await loadImg(url); return [fitToCanvas(img, img.naturalWidth, img.naturalHeight)]; }
+  finally { URL.revokeObjectURL(url); }
+}
+async function addFiles(files) {
+  files = files.filter(f => /^image\//.test(f.type) || f.type === 'application/pdf' || /\.(pdf|jpe?g|png|webp|heic|heif|gif|bmp)$/i.test(f.name));
+  if (!files.length) return;
+  if (pages.some(p => p.sample)) pages = pages.filter(p => !p.sample);
+  let added = 0, failed = 0;
+  for (const f of files) {
+    try {
+      for (const c of await fileToCanvases(f)) { const p = newPage(c, f.name); pages.push(p); schedule(p); added++; }
+    } catch (e) { console.error(e); failed++; }
+  }
+  renderGrid(); updateBar();
+  if (failed) toast(`${failed}개 파일을 열지 못했어요. JPG·PNG 사진이나 PDF인지 확인해 주세요.`);
+  else if (added) toast(`${added}쪽을 넣었어요`);
+}
+document.addEventListener('paste', e => {
+  const fs = [...(e.clipboardData?.files || [])];
+  if (fs.length) { e.preventDefault(); addFiles(fs); }
+});
+let dragDepth = 0;
+document.addEventListener('dragenter', e => { if (e.dataTransfer?.types?.includes('Files')) { dragDepth++; $('#drop').hidden = false; } });
+document.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; $('#drop').hidden = true; } });
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; $('#drop').hidden = true; addFiles([...(e.dataTransfer?.files || [])]); });
+
+/* ---------- 편집 화면 ---------- */
+const ed = { page: null, tool: 'erase', zoom: 1, peek: false, corners: null, stroke: null };
+const edCanvas = $('#edCanvas'), sheet = $('#sheet'), stage = $('#stage'), cropEl = $('#crop');
+function openEditor(p) {
+  ed.page = p; ed.zoom = 1; ed.peek = false;
+  $('#edTitle').textContent = `${pages.indexOf(p) + 1}쪽 편집`;
+  $('#strength').value = p.opt.strength; $('#strengthOut').textContent = p.opt.strength;
+  $('#rmColor').checked = p.opt.removeColor;
+  $('#editor').hidden = false;
+  document.body.style.overflow = 'hidden';
+  setTool('erase');
+  edRedraw();
+}
+function closeEditor() {
+  if (!ed.page) return;
+  ed.page = null; $('#editor').hidden = true; document.body.style.overflow = '';
+  renderGrid(); updateBar();
+}
+function edSource() { const p = ed.page; return ed.tool === 'crop' ? p.orig : ed.peek ? p.src : p.final; }
+function edRedraw() {
+  const p = ed.page; if (!p) return;
+  const src = edSource(); if (!src) return;
+  if (edCanvas.width !== src.width || edCanvas.height !== src.height) { edCanvas.width = src.width; edCanvas.height = src.height; }
+  edCanvas.getContext('2d').drawImage(src, 0, 0);
+  layoutEd();
+  if (ed.tool === 'crop') drawCrop();
+}
+function layoutEd() {
+  const r = stage.getBoundingClientRect();
+  const fit = Math.min((r.width - 32) / edCanvas.width, (r.height - 32) / edCanvas.height);
+  sheet.style.width = Math.max(40, edCanvas.width * fit * ed.zoom) + 'px';
+  $('#zLbl').textContent = Math.round(ed.zoom * 100) + '%';
+}
+window.addEventListener('resize', () => { if (ed.page) layoutEd(); });
+function setZoom(z) { ed.zoom = Math.min(6, Math.max(1, z)); layoutEd(); }
+$('#zIn').addEventListener('click', () => setZoom(ed.zoom * 1.5));
+$('#zOut').addEventListener('click', () => setZoom(ed.zoom / 1.5));
+$('#edBack').addEventListener('click', closeEditor);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && ed.page) closeEditor(); });
+
+function setTool(t) {
+  if (ed.tool === 'crop' && t !== 'crop') ed.corners = null;
+  ed.tool = t;
+  document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === t)));
+  document.querySelectorAll('[data-for]').forEach(r => { r.hidden = r.dataset.for !== t; });
+  stage.classList.toggle('erase', t === 'erase');
+  cropEl.hidden = t !== 'crop';
+  $('#peekBtn').hidden = t === 'crop';
+  if (t === 'crop') { ed.zoom = 1; ed.corners = ed.page.corners.map(q => q.slice()); }
+  edRedraw();
+}
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
+
+// 원본 보기: 누르고 있는 동안
+const peek = $('#peekBtn');
+const peekOn = e => { e.preventDefault(); ed.peek = true; edRedraw(); };
+const peekOff = () => { if (ed.peek) { ed.peek = false; edRedraw(); } };
+peek.addEventListener('pointerdown', peekOn);
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => peek.addEventListener(ev, peekOff));
+peek.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') peekOn(e); });
+peek.addEventListener('keyup', peekOff);
+peek.addEventListener('contextmenu', e => e.preventDefault());
+
+// 지우개
+$('#brush').addEventListener('input', e => { $('#brushOut').textContent = e.target.value; });
+function toImg(e) {
+  const r = edCanvas.getBoundingClientRect();
+  return [(e.clientX - r.left) * edCanvas.width / r.width, (e.clientY - r.top) * edCanvas.height / r.height];
+}
+function brushSize() { const r = edCanvas.getBoundingClientRect(); return +$('#brush').value * edCanvas.width / r.width; }
+edCanvas.addEventListener('pointerdown', e => {
+  if (ed.tool !== 'erase' || ed.peek || !ed.page?.final) return;
+  e.preventDefault();
+  edCanvas.setPointerCapture(e.pointerId);
+  ed.stroke = { size: brushSize(), pts: [toImg(e)] };
+  drawStroke(edCanvas.getContext('2d'), ed.stroke);
+});
+edCanvas.addEventListener('pointermove', e => {
+  if (!ed.stroke) return;
+  const pts = ed.stroke.pts; pts.push(toImg(e));
+  drawStroke(edCanvas.getContext('2d'), { size: ed.stroke.size, pts: pts.slice(-2) });
+});
+const endStroke = () => {
+  if (!ed.stroke || !ed.page) { ed.stroke = null; return; }
+  const p = ed.page; p.strokes.push(ed.stroke);
+  drawStroke(p.final.getContext('2d'), ed.stroke);
+  ed.stroke = null;
+  p.thumb = smallCopy(p.final);
+};
+edCanvas.addEventListener('pointerup', endStroke);
+edCanvas.addEventListener('pointercancel', endStroke);
+$('#undoBtn').addEventListener('click', () => {
+  const p = ed.page; if (!p?.strokes.length) return;
+  p.strokes.pop(); compose(p); p.thumb = smallCopy(p.final); edRedraw();
+});
+
+// 설정
+$('#strength').addEventListener('input', e => { $('#strengthOut').textContent = e.target.value; });
+$('#strength').addEventListener('change', e => { const p = ed.page; p.opt.strength = +e.target.value; schedule(p); });
+$('#rmColor').addEventListener('change', e => { const p = ed.page; p.opt.removeColor = e.target.checked; schedule(p); });
+$('#applyAll').addEventListener('click', () => {
+  const p = ed.page; let k = 0;
+  for (const q of pages) if (q !== p && (q.opt.strength !== p.opt.strength || q.opt.removeColor !== p.opt.removeColor)) { q.opt = { ...p.opt }; schedule(q); k++; }
+  toast(k ? `다른 ${k}쪽에도 같은 설정을 적용했어요` : '모든 쪽이 이미 같은 설정이에요');
+});
+$('#rotBtn').addEventListener('click', () => {
+  const p = ed.page, o = p.orig;
+  const c = makeCanvas(o.height, o.width), x = c.getContext('2d');
+  x.translate(o.height, 0); x.rotate(Math.PI / 2); x.drawImage(o, 0, 0);
+  const rot = ([u, v]) => [o.height - v, u];
+  const q = p.corners;
+  p.corners = [rot(q[3]), rot(q[0]), rot(q[1]), rot(q[2])];
+  p.orig = c; p.srcReady = false;
+  if (p.strokes.length) toast('돌리면서 지우개 자국은 처음으로 돌아갔어요');
+  p.strokes = [];
+  if (ed.tool === 'crop') setTool('erase');
+  schedule(p);
+});
+
+// 자르기
+const handles = [0, 1, 2, 3].map(k => {
+  const h = document.createElement('div'); h.className = 'handle'; h.dataset.k = k;
+  h.setAttribute('aria-label', ['왼쪽 위', '오른쪽 위', '오른쪽 아래', '왼쪽 아래'][k] + ' 모서리');
+  cropEl.append(h);
+  h.addEventListener('pointerdown', e => { e.preventDefault(); h.setPointerCapture(e.pointerId); h.dataset.drag = '1'; });
+  h.addEventListener('pointermove', e => {
+    if (!h.dataset.drag) return;
+    const [x, y] = toImg(e);
+    ed.corners[k] = [Math.min(edCanvas.width, Math.max(0, x)), Math.min(edCanvas.height, Math.max(0, y))];
+    drawCrop();
+  });
+  const up = () => { delete h.dataset.drag; };
+  h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
+  return h;
+});
+function drawCrop() {
+  if (!ed.corners) return;
+  const W = edCanvas.width, H = edCanvas.height;
+  $('#cropPoly').setAttribute('points', ed.corners.map(([x, y]) => `${x / W * 100},${y / H * 100}`).join(' '));
+  ed.corners.forEach(([x, y], k) => { handles[k].style.left = x / W * 100 + '%'; handles[k].style.top = y / H * 100 + '%'; });
+}
+$('#cropReset').addEventListener('click', () => { ed.corners = fullCorners(ed.page.orig); drawCrop(); });
+$('#cropApply').addEventListener('click', () => {
+  const p = ed.page;
+  p.corners = ed.corners.map(q => q.slice()); p.srcReady = false;
+  if (p.strokes.length) toast('자르면서 지우개 자국은 처음으로 돌아갔어요');
+  p.strokes = [];
+  setTool('erase');
+  schedule(p);
+});
+
+/* ---------- PDF 만들기 ---------- */
+let making = false;
+const dlReady = (window.claude && typeof window.claude.use === 'function')
+  ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null);
+function stamp() {
+  const d = new Date(), z = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+}
+async function savePdf(blob, name) {
+  const dl = await Promise.race([dlReady, new Promise(r => setTimeout(() => r(null), 1500))]);
+  if (dl) {
+    try { await dl.save({ filename: name, data: blob }); toast('PDF를 저장했어요'); }
+    catch (e) {
+      if (e?.code === 'declined') toast('저장을 취소했어요');
+      else if (e?.code === 'rate_limited') toast('저장 창이 이미 열려 있어요. 잠시 후 다시 눌러 주세요.');
+      else toast('이 화면에서는 저장할 수 없어요.');
+    }
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  toast('PDF를 내려받았어요');
+}
+$('#doneBtn').addEventListener('click', async () => {
+  if (!pages.length || making || pages.some(p => p.busy)) return;
+  if (!window.jspdf) { toast('PDF 도구를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.'); return; }
+  making = true; updateBar();
+  try {
+    await tick();
+    const { jsPDF } = window.jspdf;
+    let doc = null;
+    for (const p of pages) {
+      const c = p.final, o = c.width > c.height ? 'l' : 'p';
+      if (!doc) doc = new jsPDF({ orientation: o, unit: 'pt', format: 'a4', compress: true });
+      else doc.addPage('a4', o);
+      const pw = doc.internal.pageSize.getWidth(), ph = doc.internal.pageSize.getHeight();
+      const s = Math.min(pw / c.width, ph / c.height), iw = c.width * s, ih = c.height * s;
+      doc.addImage(c.toDataURL('image/jpeg', 0.9), 'JPEG', (pw - iw) / 2, (ph - ih) / 2, iw, ih, undefined, 'FAST');
+      await tick();
+    }
+    await savePdf(doc.output('blob'), `청소한 시험지 ${stamp()}.pdf`);
+  } catch (e) { console.error(e); toast('PDF를 만들지 못했어요. 페이지 수를 줄여서 다시 해 보세요.'); }
+  making = false; updateBar();
+});
+
+/* ---------- 알림 ---------- */
+let toastTimer = 0;
+function toast(msg, act, fn) {
+  $('#toastMsg').textContent = msg;
+  const b = $('#toastAct');
+  b.hidden = !act; b.textContent = act || '';
+  b.onclick = () => { $('#toast').hidden = true; fn && fn(); };
+  $('#toast').hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('#toast').hidden = true; }, act ? 6000 : 3200);
+}
+
+/* ---------- 예시 페이지 ---------- */
+async function makeSample() {
+  try {
+    await Promise.race([
+      Promise.all([document.fonts.load('600 40px "IBM Plex Sans KR"'), document.fonts.load('400 40px "IBM Plex Sans KR"'), document.fonts.load('60px "Nanum Pen Script"')]),
+      new Promise(r => setTimeout(r, 2500))
+    ]);
+  } catch (e) {}
+  const W = 1240, H = 1754, c = makeCanvas(W, H), x = c.getContext('2d');
+  const g = x.createRadialGradient(W * 0.42, H * 0.3, 120, W * 0.5, H * 0.5, H * 0.9);
+  g.addColorStop(0, '#f5f3ec'); g.addColorStop(1, '#c9c4b6');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  const print = '#232327', sans = '"IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+  const pen = '"Nanum Pen Script", cursive';
+  x.fillStyle = print; x.strokeStyle = print;
+  x.font = `600 46px ${sans}`; x.fillText('2학기 중간고사  수학', 90, 150);
+  x.font = `400 26px ${sans}`; x.fillText('2학년  ___반  ___번   이름 ____________', 90, 205);
+  x.lineWidth = 3; x.beginPath(); x.moveTo(90, 240); x.lineTo(W - 90, 240); x.stroke();
+  const qs = [
+    [330, '1.  다음 식을 전개하시오.   (3x + 2)(x − 4)'],
+    [640, '2.  일차함수 y = 2x − 3 의 그래프가 지나는 점을 모두 고르시오.'],
+    [960, '3.  연립방정식  x + y = 7,  2x − y = 5 를 푸시오.'],
+    [1300, '4.  한 변의 길이가 6 cm 인 정사각형의 대각선 길이를 구하시오.']
+  ];
+  x.font = `400 32px ${sans}`;
+  for (const [y, t] of qs) x.fillText(t, 90, y);
+  x.font = `400 30px ${sans}`;
+  x.fillText('①  (0, −3)     ②  (1, −1)     ③  (2, 2)     ④  (3, 3)     ⑤  (−1, −5)', 140, 715);
+  x.font = `400 24px ${sans}`; x.fillStyle = '#3a3a40';
+  x.fillText('[4점]', W - 170, 330); x.fillText('[4점]', W - 170, 640); x.fillText('[5점]', W - 170, 960); x.fillText('[5점]', W - 170, 1300);
+  x.fillText('- 1 -', W / 2 - 22, H - 70);
+
+  // 손으로 쓴 잉크는 종이 위에 곱해지듯 겹친다
+  x.globalCompositeOperation = 'multiply';
+  // 연필 풀이
+  x.fillStyle = 'rgba(70,70,78,0.6)'; x.strokeStyle = 'rgba(70,70,78,0.55)'; x.lineWidth = 3;
+  x.font = `62px ${pen}`;
+  x.fillText('김하늘', 700, 200);
+  x.fillText('= 3x² − 12x + 2x − 8', 170, 420);
+  x.fillText('= 3x² − 10x − 8', 170, 500);
+  x.fillText('x=1 → y = −1 ✓', 780, 800);
+  x.fillText('3x = 12,  x = 4,  y = 3', 170, 1060);
+  x.fillText('(4, 3)', 190, 1140);
+  x.fillText('6² + 6² = 72', 170, 1400);
+  x.fillText('√72 = 6√2 cm', 170, 1480);
+  x.beginPath(); x.ellipse(160, 704, 34, 28, 0, 0, Math.PI * 2); x.stroke();
+  x.beginPath(); x.ellipse(393, 704, 34, 28, 0.1, 0, Math.PI * 2); x.stroke();
+  x.beginPath(); x.ellipse(1003, 704, 34, 28, -0.1, 0, Math.PI * 2); x.stroke();
+  x.beginPath(); x.moveTo(640, 1030); x.bezierCurveTo(700, 1000, 760, 1090, 820, 1040); x.stroke();
+
+  // 빨간 채점
+  x.strokeStyle = 'rgba(214,40,36,0.92)'; x.fillStyle = 'rgba(214,40,36,0.92)'; x.lineWidth = 7; x.lineCap = 'round';
+  x.beginPath(); x.ellipse(110, 320, 52, 46, 0, 0, Math.PI * 2); x.stroke();
+  x.beginPath(); x.ellipse(110, 630, 52, 46, 0, 0, Math.PI * 2); x.stroke();
+  x.beginPath(); x.moveTo(70, 930); x.lineTo(150, 990); x.moveTo(150, 930); x.lineTo(70, 990); x.stroke();
+  x.beginPath(); x.ellipse(110, 1290, 52, 46, 0, 0, Math.PI * 2); x.stroke();
+  x.font = `120px ${pen}`; x.fillText('13', W - 250, 190);
+  x.beginPath(); x.moveTo(W - 260, 210); x.lineTo(W - 110, 204); x.moveTo(W - 255, 226); x.lineTo(W - 115, 220); x.stroke();
+  x.font = `56px ${pen}`; x.fillText('부호 확인!', 380, 1190);
+
+  // 파란 볼펜 밑줄, 노란 형광펜
+  x.strokeStyle = 'rgba(38,62,176,0.9)'; x.lineWidth = 4;
+  x.beginPath(); x.moveTo(540, 1316); x.lineTo(760, 1312); x.stroke();
+  x.fillStyle = 'rgba(250,230,40,0.5)'; x.fillRect(440, 612, 300, 40);
+  x.globalCompositeOperation = 'source-over';
+  return c;
+}
+
+/* ---------- 시작 ---------- */
+renderGrid(); updateBar();
+makeSample().then(c => {
+  if (pages.length) return;
+  const p = newPage(c, 'sample', true); pages.push(p); schedule(p);
+});
+})();
+</script>
+<!--/page-->
+</body>
+</html>
