@@ -99,7 +99,7 @@ def build_payload(results: dict, market_status: dict, issue_date: str, cfg: dict
         return [{k: i.get(k) for k in ("name", "value", "unit", "change", "change_pct", "as_of", "source")}
                 for i in r["items"]]
 
-    news = results.get("news", {}).get("items", [])[:40]
+    news = results.get("news", {}).get("items", [])[:60]
     cut = lambda a, n=300: {**{k: a.get(k) for k in ("id", "title", "source", "published")},
                             "description": (a.get("description") or "")[:n]}
     holdings = [{"key": h["key"], "name": h["name"], "market": h["market"],

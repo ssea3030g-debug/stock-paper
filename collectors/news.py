@@ -117,6 +117,7 @@ class NewsCollector(BaseCollector):
                 articles.append({
                     "title": title, "url": e.get("link", ""),
                     "source": f"{e['author']} (Finnhub)" if feed.get("type") == "finnhub" and e.get("author") else feed["name"],
+                    "feed": feed["name"],
                     "published": published.astimezone(KST).isoformat(timespec="minutes"),
                     "first_sentence": first_sentence(body) if body else "",
                     "description": body[:600],
@@ -130,6 +131,7 @@ class NewsCollector(BaseCollector):
         start_iso = start.astimezone(KST).isoformat(timespec="minutes")
         articles = [a for a in pool if a["published"] >= start_iso]      # 지면 후보는 최근 24시간만
         limit = self.cfg.get("max_collect", 30)
+        articles = self._spread(articles, limit)
         for i, a in enumerate(articles[:limit], 1):
             a["id"] = f"n{i}"
         rest = [a for a in pool if "id" not in a]
@@ -139,6 +141,25 @@ class NewsCollector(BaseCollector):
                              data={"window": [start.isoformat(timespec="minutes"), end.isoformat(timespec="minutes")],
                                    "pool": pool},   # 종목 뉴스·찌라시 검색용 전체 기사 (지면에는 items 만)
                              error="; ".join(errors) or None, sources=sources)
+
+    def _spread(self, articles: list[dict], limit: int) -> list[dict]:
+        """24시간 기사 수백 개 중 후보 limit 개를 고른다.
+        최신순으로 자르면 새벽 1~2시간 기사만 남으므로, 생활·행사성 제목을 거르고
+        피드마다 돌아가며(설정 순서 = 우선순위) 최신 기사부터 한 개씩 뽑는다."""
+        noise = self.cfg.get("candidate_exclude") or []
+        cand = [a for a in articles if not any(w in a["title"] for w in noise)]
+        order = [f.get("name") for f in self.cfg.get("feeds", [])]
+        by_src: dict[str, list] = {}
+        for a in cand:                                   # 이미 최신순
+            by_src.setdefault(a.get("feed") or a["source"], []).append(a)
+        keys = sorted(by_src, key=lambda k: order.index(k) if k in order else len(order))
+        out = []
+        while len(out) < limit and any(by_src[k] for k in keys):
+            for k in keys:
+                if by_src[k] and len(out) < limit:
+                    out.append(by_src[k].pop(0))
+        out.sort(key=lambda a: a["published"], reverse=True)
+        return out
 
     def _finnhub(self, feed) -> list[dict]:
         """Finnhub 시장 뉴스(영문) → RSS 항목과 같은 모양으로."""
