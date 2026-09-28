@@ -56,6 +56,46 @@ def setup_logging(cfg: dict, issue: dt.date, write_file: bool) -> None:
                         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s")
 
 
+MARKET_IDS = ("korea_market", "us_market", "indicators")
+
+
+def merge_fresh(prev: dict, fresh: dict) -> dict:
+    """다시 받은 결과가 실패한 항목(값 없음)은 이전 값을 그대로 둔다 — 갱신 실패로 지면이 비지 않게."""
+    out = {}
+    for cid, new in fresh.items():
+        old = prev.get(cid)
+        if not old:
+            out[cid] = new
+            continue
+        if not new.get("ok"):
+            out[cid] = {**old, "error": new.get("error")}
+            continue
+        olds = {i.get("name"): i for i in old.get("items") or [] if isinstance(i, dict)}
+        items = []
+        for i in new.get("items") or []:
+            o = olds.get(i.get("name")) if isinstance(i, dict) else None
+            items.append(o if o and i.get("value") is None and "value" in i and o.get("value") is not None else i)
+        out[cid] = {**new, "items": items}
+    return out
+
+
+def apply_live_status(bundle: dict, ctx: Context, status: dict) -> dict:
+    """장중·장마감 시세로 갱신했으면 '휴장, 9/23 기준' 같은 안내를 오늘 기준으로 바꾼다."""
+    bundle["markets_at"] = ctx.now.isoformat(timespec="seconds")
+    if bundle.get("morning"):
+        bundle.setdefault("morning_status", bundle.get("market_status"))
+    today = ctx.live_session
+    km = (bundle["results"].get("korea_market") or {}).get("data") or {}
+    fresh_today = any((i.get("as_of") or "")[:10] == (today.isoformat() if today else "-")
+                      for i in (bundle["results"].get("korea_market") or {}).get("items") or [])
+    if today and km.get("session") == today.isoformat() and fresh_today:
+        wd = "월화수목금토일"[today.weekday()]
+        status = {**status, "today_closed": False, "last_session": today.isoformat(),
+                  "last_session_label": f"{today.month}/{today.day}({wd})", "skipped_holidays": []}
+        bundle["market_status"] = status
+    return status
+
+
 def seen_rumors(data_dir: Path, issue: dt.date, days: int = 3) -> list[str]:
     """지난 며칠 지면에 실제로 실린 찌라시(요약에서 고른 것)를 모은다 → 오늘은 새 소문을 먼저 싣기 위해."""
     from collectors.rumors import norm
@@ -149,11 +189,13 @@ def main(argv=None) -> int:
         for k in sub["collectors"]:
             sub["collectors"][k] = dict(sub["collectors"][k], live=args.live)
         ctx = Context(issue_date=issue, http=HttpClient.from_config(cfg.get("http")), calendar=calendar,
-                      env=dict(os.environ))
+                      env=dict(os.environ), live=args.live)
         prev = bundle["results"]
         fresh = collect({**sub, "collectors": sub["collectors"]}, ctx, holdings, pool_from=prev,
                        seen=seen_rumors(data_dir, issue))
-        bundle["results"] = results = {**prev, **fresh}
+        if args.live:   # 아침 기사(머리기사·핵심 3줄)는 아침 수치로 썼으므로, 검증용으로 아침 수치를 남겨 둔다
+            bundle.setdefault("morning", {k: prev[k] for k in MARKET_IDS if k in prev})
+        bundle["results"] = results = {**prev, **merge_fresh(prev, fresh)}
         bundle["holdings"] = holdings
         bundle["holdings_at"] = dt.datetime.now(KST).isoformat(timespec="seconds")
     else:
@@ -164,7 +206,7 @@ def main(argv=None) -> int:
                    "KIS_APP_KEY": "sample", "KIS_APP_SECRET": "sample"}
         else:
             http, env = HttpClient.from_config(cfg.get("http")), dict(os.environ)
-        ctx = Context(issue_date=issue, http=http, calendar=calendar, env=env)
+        ctx = Context(issue_date=issue, http=http, calendar=calendar, env=env, live=args.live)
         hp = Path(args.holdings) if args.holdings else data_dir / "holdings.json"
         holdings = []
         if args.sample:
@@ -178,8 +220,13 @@ def main(argv=None) -> int:
         bundle = {"issue_date": issue.isoformat(), "sample": args.sample, "market_status": status, "holdings": holdings,
                   "collected_at": dt.datetime.now(KST).isoformat(timespec="seconds"), "results": results}
 
+    if not args.render_only and args.live:
+        status = apply_live_status(bundle, ctx, status)
+
     scfg = cfg.get("summary", {})
-    payload = summarizer.build_payload(results, status, issue.isoformat(), scfg)
+    morning = bundle.get("morning") or {}
+    payload = summarizer.build_payload({**results, **morning}, bundle.get("morning_status") or status if morning else status,
+                                       issue.isoformat(), scfg)
 
     if not args.dry_run and not args.render_only:
         bundle.setdefault("holdings_at", bundle.get("collected_at"))

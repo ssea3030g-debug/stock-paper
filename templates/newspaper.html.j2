@@ -309,7 +309,7 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
 <div class="dateline">
   <span>{{ date_ko }}</span>
   <span class="no">제{{ issue_no }}호</span>
-  <span>{% if status.today_closed %}국내 증시 휴장{% else %}국내 증시 개장{% endif %} · 국내 시세 {{ status.last_session_label }} 기준</span>
+  <span>{% if status.today_closed %}국내 증시 휴장{% else %}국내 증시 개장{% endif %} · 국내 시세 {{ status.last_session_label }} 기준{% if markets_at %} · 시세 {{ markets_at }} 갱신{% endif %}</span>
 </div>
 {%- if sample %}
 <p class="sample">견본 — 샘플 응답으로 만든 미리보기입니다. 실제 시세·기사가 아닙니다.</p>
@@ -336,7 +336,7 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
   <div class="label">머리기사</div>
   <h1>{{ summary.headline.title }}</h1>
   <p class="lede">{{ summary.headline.body }}</p>
-  <p class="byline">{% if summary.provider in ('session', 'api') %}Claude가 이 신문에 실린 수집 데이터만으로 작성{% else %}수집한 수치로 자동 작성 (AI 요약 없음){% endif %}</p>
+  <p class="byline">{% if summary.provider in ('session', 'api') %}Claude가 이 신문에 실린 수집 데이터만으로 작성{% if markets_at and morning_note %} · 기사는 오전 7시 발행 시점 수치 기준, 표는 {{ markets_at }} 갱신{% endif %}{% else %}수집한 수치로 자동 작성 (AI 요약 없음){% endif %}</p>
 </section>
 
 {%- elif s.id == 'korea_market' %}
@@ -376,7 +376,8 @@ table.quotes{width:100%;border-collapse:collapse;font:400 14px/1.3 var(--f-sans)
   {%- else %}
   <p class="nodata">데이터 없음</p>
   {%- endif %}
-  {{ src_line(sec, status.last_session_label ~ ' 15:30') }}
+  {%- set k0 = ((sec['items'][0].as_of or '') if sec['items'] else '') %}
+  {{ src_line(sec, (status.last_session_label ~ ' ' ~ k0[11:]) if '장중' in k0 else status.last_session_label ~ ' 15:30') }}
 </section>
 
 {%- elif s.id in ('us_market', 'indicators', 'watchlist') %}

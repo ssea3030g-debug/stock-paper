@@ -21,11 +21,29 @@ class Context:
     http: HttpClient
     calendar: KrxCalendar
     env: dict = field(default_factory=lambda: dict(os.environ))
+    live: bool = False                      # 앱을 열 때 갱신: 오늘 장중 최근가까지 받음
+
+    @property
+    def now(self) -> dt.datetime:
+        return dt.datetime.now(KST)
+
+    @property
+    def live_session(self) -> dt.date | None:
+        """live 모드에서 오늘이 국내 거래일이고 장이 열렸으면 오늘 날짜."""
+        if not self.live:
+            return None
+        now = self.now
+        if self.calendar.status(now.date())["today_closed"] or now.time() < dt.time(9, 0):
+            return None
+        return now.date()
 
     @property
     def issue_time(self) -> dt.datetime:
         """발행 기준 시각 = 발행일 07:00 KST (과거 날짜로 다시 만들 때도 같은 기준)."""
-        return dt.datetime.combine(self.issue_date, dt.time(7, 0), KST)
+        t = dt.datetime.combine(self.issue_date, dt.time(7, 0), KST)
+        if self.live and self.now.date() == self.issue_date and self.now > t:   # 오후판·앱 갱신: 지금까지의 기사
+            return self.now
+        return t
 
     @property
     def market_status(self) -> dict:

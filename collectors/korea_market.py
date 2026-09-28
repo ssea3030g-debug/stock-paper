@@ -34,6 +34,12 @@ class KoreaMarketCollector(BaseCollector):
     def collect(self) -> SectionResult:
         status = self.ctx.market_status
         session = dt.date.fromisoformat(status["last_session"])
+        today = self.ctx.live_session
+        label = "15:30 KST"
+        if today:                                   # 오늘 장중·장마감 시세 (Yahoo 는 약 20분 지연)
+            session = today
+            if self.ctx.now.time() < dt.time(15, 30):
+                label = self.ctx.now.strftime("%H:%M") + " 기준 장중"
         indices = self.cfg.get("indices", ["KOSPI", "KOSDAQ"])
         items: list[DataPoint] = []
         errors: list[str] = []
@@ -44,10 +50,12 @@ class KoreaMarketCollector(BaseCollector):
             for src in self.cfg.get("sources", ["krx_openapi", "yfinance"]):
                 try:
                     if src == "krx_openapi":
+                        if today:           # KRX 일별 시세는 장 마감 뒤에만 나온다
+                            continue
                         dp = self._krx(idx, session)
                     elif src == "yfinance":
                         dp = yahoo.last_close(self.ctx.http, YF_SYMBOLS[idx], NAMES[idx],
-                                              on_or_before=session, close_label="15:30 KST")
+                                              on_or_before=session, close_label=label)
                     if dp:
                         break
                 except Exception as e:  # noqa: BLE001 — 다음 출처로 넘어간다
@@ -68,7 +76,7 @@ class KoreaMarketCollector(BaseCollector):
                 self.log.warning("투자자별 순매수 실패: %s", e)
 
         note = None
-        if status["skipped_holidays"]:
+        if status["skipped_holidays"] and not today:
             names = ", ".join(sorted({h["name"] for h in status["skipped_holidays"]}))
             note = f"휴장({names}) — 최근 거래일 {status['last_session_label']} 기준"
         ok = any(i.value is not None for i in items)

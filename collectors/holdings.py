@@ -114,7 +114,7 @@ class HoldingsCollector(BaseCollector):
 
     # ── 시세 ─────────────────────────────────────────────
     def _price(self, h, info):
-        live = self.cfg.get("live")
+        live = self.cfg.get("live") or self.ctx.live
         if h["market"] == "US":
             cutoff, label, symbols = self.ctx.issue_date - dt.timedelta(days=1), "16:00 ET", [h["code"]]
         else:

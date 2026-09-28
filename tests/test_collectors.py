@@ -69,9 +69,11 @@ class UsMarketTest(unittest.TestCase):
 class IndicatorsTest(unittest.TestCase):
     def test_primary_sources(self):
         items = {i.extra["id"]: i for i in run("indicators").items}
-        self.assertAlmostEqual(items["usdkrw"].value, 1393.1)          # 쉼표 포함 값 처리
-        self.assertEqual(items["usdkrw"].source, "한국은행 ECOS")
-        self.assertNotIn("/e/", items["usdkrw"].source_url)             # 출처 URL 에 API 키 노출 금지
+        # 환율은 freshest: ECOS(9/23)보다 기준일이 최근인 Yahoo(9/24)를 쓴다
+        self.assertAlmostEqual(items["usdkrw"].value, 1392.4)
+        self.assertEqual(items["usdkrw"].as_of[:10], "2026-09-24")
+        self.assertEqual(items["ktb3y"].source, "한국은행 ECOS")
+        self.assertNotIn("/e/", items["ktb3y"].source_url)              # 출처 URL 에 API 키 노출 금지
         self.assertAlmostEqual(items["ust10y"].value, 4.18)
         self.assertAlmostEqual(items["ust10y"].change, 0.03, places=6)
         self.assertIsNone(items["ust10y"].change_pct)                   # 금리는 %p

@@ -20,19 +20,25 @@ class IndicatorsCollector(BaseCollector):
 
     def collect(self) -> SectionResult:
         cutoff = self.ctx.issue_date - dt.timedelta(days=1)
+        if self.ctx.live:                            # 앱을 열 때: 오늘 시세까지 (ECOS·FRED 는 일별이라 그대로)
+            cutoff = self.ctx.now.date()
         items, errors = [], []
         for spec in self.cfg.get("items", []):
             dp = None
             for src in spec.get("sources", []):
                 try:
+                    got = None
                     if src == "ecos":
-                        dp = self._ecos(spec, cutoff)
+                        got = self._ecos(spec, cutoff)
                     elif src == "fred":
-                        dp = self._fred(spec, cutoff)
+                        got = self._fred(spec, cutoff)
                     elif src == "yfinance":
-                        dp = yahoo.last_close(self.ctx.http, spec["yf"], spec["name"],
-                                              on_or_before=cutoff, unit=spec.get("unit", ""))
-                    if dp:
+                        got = yahoo.last_close(self.ctx.http, spec["yf"], spec["name"],
+                                               on_or_before=cutoff, unit=spec.get("unit", ""))
+                    # freshest: 국내 휴장 중에도 해외에서 거래되는 지표(환율)는 기준일이 더 최근인 쪽을 쓴다
+                    if got and (dp is None or (got.as_of or "")[:10] > (dp.as_of or "")[:10]):
+                        dp = got
+                    if dp and not spec.get("freshest"):
                         break
                 except Exception as e:  # noqa: BLE001
                     errors.append(f"{spec['id']}/{src}: {e}")

@@ -99,6 +99,8 @@ def render_issue(cfg: dict, bundle: dict, summary: dict, out_dir: Path, standalo
         summary=summary, news_items=news_items, ear_items=ear, archive=archive,
         stocks=stocks, rumors=rumors, app_data=app_data,
         show_disclaimer="disclaimer" in ids, collected_at=bundle.get("collected_at", "")[:16].replace("T", " "),
+        markets_at=(bundle.get("markets_at") or "")[11:16],
+        morning_note=bool(bundle.get("morning")),
     )
 
 

@@ -63,7 +63,7 @@ collectors:
     enabled: true
     items:   # 각 지표별 우선 출처 → 대체 출처
              # 유가·미 국채는 FRED 가 1~2일 늦게 갱신되므로 Yahoo(선물·실시간 지수) 우선
-      - { id: usdkrw,  name: "원/달러 환율",   unit: "원",  sources: [ecos, yfinance], ecos: "731Y001/D/0000001", yf: "KRW=X" }
+      - { id: usdkrw,  name: "원/달러 환율",   unit: "원",  sources: [ecos, yfinance], freshest: true, ecos: "731Y001/D/0000001", yf: "KRW=X" }   # 국내 휴장 중엔 해외 시세(Yahoo)가 더 최근
       - { id: wti,     name: "WTI 유가",       unit: "달러", sources: [yfinance, fred], fred: "DCOILWTICO",   yf: "CL=F" }
       - { id: brent,   name: "브렌트유",       unit: "달러", sources: [yfinance, fred], fred: "DCOILBRENTEU", yf: "BZ=F" }
       - { id: ust10y,  name: "미 국채 10년",   unit: "%",   sources: [yfinance, fred], fred: "DGS10",        yf: "^TNX" }
