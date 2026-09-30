@@ -33,11 +33,17 @@ def daily_closes(http: HttpClient, symbol: str, meta_out: dict | None = None) ->
     out = []
     for ts, c in zip(r.get("timestamp") or [], closes):
         out.append((dt.datetime.fromtimestamp(ts, tz).date(), None if c is None else float(c)))
-    # 마지막 거래일 종가가 비어 오는 경우(지수에서 잦음): 같은 날의 최근가(regularMarketPrice)로 채운다
+    # 같은 날짜 행이 두 번 오기도 한다(장중 행 + 빈 행) → 날짜마다 값 있는 마지막 행만
+    by_day: dict = {}
+    for d, c in out:
+        if c is not None or d not in by_day:
+            by_day[d] = c
+    out = sorted(by_day.items())
+    # 종가가 비어 오는 경우(지수에서 잦음): 최근가(regularMarketPrice)의 날짜와 같은 행을 그 값으로 채운다
     m = r.get("meta") or {}
-    if out and out[-1][1] is None and m.get("regularMarketPrice") is not None and m.get("regularMarketTime"):
-        if dt.datetime.fromtimestamp(m["regularMarketTime"], tz).date() == out[-1][0]:
-            out[-1] = (out[-1][0], float(m["regularMarketPrice"]))
+    if m.get("regularMarketPrice") is not None and m.get("regularMarketTime"):
+        day = dt.datetime.fromtimestamp(m["regularMarketTime"], tz).date()
+        out = [(d, float(m["regularMarketPrice"]) if (c is None and d == day) else c) for d, c in out]
     return out, tzname
 
 

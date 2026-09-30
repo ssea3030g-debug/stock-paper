@@ -61,6 +61,8 @@ class KoreaMarketCollector(BaseCollector):
                 except Exception as e:  # noqa: BLE001 — 다음 출처로 넘어간다
                     errors.append(f"{idx}/{src}: {e}")
                     self.log.warning("%s %s 실패: %s", idx, src, e)
+            if dp and today and dp.as_of[:10] != today.isoformat():
+                dp.as_of = dp.as_of[:10] + " 15:30 KST"      # 오늘 시세가 아직 없음 → 직전 거래일 종가
             items.append(dp or DataPoint(name=NAMES.get(idx, idx), value=None))
             if dp:
                 sources.append({"name": dp.source, "url": dp.source_url})
@@ -81,7 +83,7 @@ class KoreaMarketCollector(BaseCollector):
             note = f"휴장({names}) — 최근 거래일 {status['last_session_label']} 기준"
         ok = any(i.value is not None for i in items)
         return SectionResult(id=self.id, ok=ok, items=items, data={"flows": flows,
-                             "session": session.isoformat()}, note=note,
+                             "session": max((i.as_of[:10] for i in items if i.as_of), default=session.isoformat())}, note=note,
                              error="; ".join(errors) or None, sources=_uniq(sources))
 
     # ── KRX 정보데이터시스템 Open API ───────────────────────
