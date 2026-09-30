@@ -83,7 +83,7 @@ def render_issue(cfg: dict, bundle: dict, summary: dict, out_dir: Path, standalo
                 "holdings_at": bundle.get("holdings_at") or bundle.get("collected_at", ""),
                 "refresh_trigger": (cfg.get("app") or {}).get("refresh_trigger_id", ""),
                 "refresh_after_min": (cfg.get("app") or {}).get("refresh_after_min", 30),
-                "stocks": stocks, "snapshot": bundle.get("holdings") or [], "sample": bool(bundle.get("sample")),
+                "stocks": stocks, "snapshot": [{k: v for k, v in h.items() if k not in PRIVATE} for h in bundle.get("holdings") or []], "sample": bool(bundle.get("sample")),
                 "names": name_lists()}
     ear = [i for sec in ("korea_market", "us_market") for i in (results.get(sec) or {}).get("items", [])][:5]
 
@@ -116,6 +116,9 @@ def name_lists() -> dict:
     if usf.exists():
         us = json.loads(usf.read_text(encoding="utf-8"))
     return {"kr": kr, "us": us}
+
+
+PRIVATE = ("qty", "avg")   # 보유 수량·평균 단가는 앱 저장소에서만 읽는다 (지면 파일·깃에 남기지 않음)
 
 
 def build_stocks(results: dict, summary: dict, snapshot: list) -> dict:

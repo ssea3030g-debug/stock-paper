@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 logs/
-output/data/
+output/data/*.prompt.md
+output/data/holdings.json
 output/artifact/
 .pytest_cache/

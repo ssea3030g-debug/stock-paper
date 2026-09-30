@@ -59,6 +59,17 @@ def setup_logging(cfg: dict, issue: dt.date, write_file: bool) -> None:
 MARKET_IDS = ("korea_market", "us_market", "indicators")
 
 
+def strip_private(bundle: dict) -> dict:
+    """저장하는 수집 결과에서 보유 수량·평균 단가를 뺀다 — 이 파일은 깃(공개 저장소)에 올라간다."""
+    drop = lambda h: {k: v for k, v in h.items() if k not in ("qty", "avg")}
+    out = {**bundle, "holdings": [drop(h) for h in bundle.get("holdings") or []]}
+    res = dict(out.get("results") or {})
+    if res.get("holdings"):
+        res["holdings"] = {**res["holdings"], "items": [drop(h) for h in res["holdings"].get("items") or []]}
+    out["results"] = res
+    return out
+
+
 def merge_fresh(prev: dict, fresh: dict) -> dict:
     """다시 받은 결과가 실패한 항목(값 없음)은 이전 값을 그대로 둔다 — 갱신 실패로 지면이 비지 않게."""
     out = {}
@@ -231,7 +242,7 @@ def main(argv=None) -> int:
     if not args.dry_run and not args.render_only:
         bundle.setdefault("holdings_at", bundle.get("collected_at"))
         data_dir.mkdir(parents=True, exist_ok=True)
-        raw_path.write_text(json.dumps(bundle, ensure_ascii=False, indent=1), encoding="utf-8")
+        raw_path.write_text(json.dumps(strip_private(bundle), ensure_ascii=False, indent=1), encoding="utf-8")
         prompt_path.write_text(summarizer.build_prompt(payload, scfg), encoding="utf-8")
         log.info("수집 결과 저장: %s", raw_path.relative_to(ROOT) if raw_path.is_relative_to(ROOT) else raw_path)
 
