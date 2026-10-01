@@ -6,3 +6,4 @@ output/data/*.prompt.md
 output/data/holdings.json
 output/artifact/
 .pytest_cache/
+output/data/*.reuse.json
