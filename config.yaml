@@ -178,7 +178,7 @@ summary:
 
 # ── 앱 ───────────────────────────────────────────────────────
 app:
-  refresh_trigger_id: trig_01QR6QctLxR9gssc9Nbj71mu   # 앱을 열 때 '내 종목' 갱신을 요청할 Claude 예약 작업
+  refresh_trigger_id: trig_0143f8W4n59Fg7tYe6UMbuhg   # 앱을 열 때 '내 종목' 갱신을 요청할 Claude 예약 작업
   refresh_after_min: 60                               # 정보가 이보다 오래됐으면 열 때 갱신 요청
   refresh_from: "09:00"                               # 자동 갱신은 평일 이 시간대(KST)에만 (주말·장외엔 요청 안 함)
   refresh_until: "15:40"
