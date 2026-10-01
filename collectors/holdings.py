@@ -154,7 +154,7 @@ class HoldingsCollector(BaseCollector):
             for a in data if isinstance(data, list) else []:
                 ts = dt.datetime.fromtimestamp(a.get("datetime", 0), KST)
                 arts.append({"title": clean(a.get("headline")), "url": a.get("url", ""), "source": a.get("source", ""),
-                             "published": ts.isoformat(timespec="minutes"), "description": clean(a.get("summary"))[:400],
+                             "published": ts.isoformat(timespec="minutes"), "description": clean(a.get("summary"))[:100],
                              "lang": "en"})
         else:
             cid, secret = self.key("NAVER_CLIENT_ID"), self.key("NAVER_CLIENT_SECRET")

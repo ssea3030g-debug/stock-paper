@@ -82,7 +82,9 @@ def render_issue(cfg: dict, bundle: dict, summary: dict, out_dir: Path, standalo
     app_data = {"issue_date": bundle["issue_date"], "collected_at": bundle.get("collected_at", ""),
                 "holdings_at": bundle.get("holdings_at") or bundle.get("collected_at", ""),
                 "refresh_trigger": (cfg.get("app") or {}).get("refresh_trigger_id", ""),
-                "refresh_after_min": (cfg.get("app") or {}).get("refresh_after_min", 30),
+                "refresh_after_min": (cfg.get("app") or {}).get("refresh_after_min", 60),
+                "refresh_from": (cfg.get("app") or {}).get("refresh_from", "09:00"),
+                "refresh_until": (cfg.get("app") or {}).get("refresh_until", "15:40"),
                 "stocks": stocks, "snapshot": [{k: v for k, v in h.items() if k not in PRIVATE} for h in bundle.get("holdings") or []], "sample": bool(bundle.get("sample")),
                 "names": name_lists()}
     ear = [i for sec in ("korea_market", "us_market") for i in (results.get(sec) or {}).get("items", [])][:5]

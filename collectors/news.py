@@ -170,7 +170,7 @@ class NewsCollector(BaseCollector):
         out = []
         for a in data if isinstance(data, list) else []:
             ts = dt.datetime.fromtimestamp(a.get("datetime", 0), dt.timezone.utc)
-            out.append({"title": a.get("headline", ""), "link": a.get("url", ""), "description": a.get("summary", ""),
+            out.append({"title": a.get("headline", ""), "link": a.get("url", ""), "description": (a.get("summary") or "")[:100],   # 영문 기사는 짧게
                         "date": ts.isoformat(), "author": a.get("source", "")})
         return out
 

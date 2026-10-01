@@ -378,11 +378,17 @@
     blocked_by_policy: "조직 정책으로 자동 갱신이 막혀 있습니다. Claude 채팅에 ‘갱신’이라고 보내세요.",
     approval_required: "조직 정책상 승인이 필요해 자동 갱신을 못 했습니다. Claude 채팅에 ‘갱신’이라고 보내세요."
   };
+  function marketOpen() {   // 평일 장 시간(KST)에만 자동 갱신 — 주말·장외엔 시세가 안 바뀜
+    var k = new Date(Date.now() + 9 * 3600000), day = k.getUTCDay();
+    var hm = function (s) { var p = String(s).split(":"); return +p[0] * 60 + +(p[1] || 0); };
+    var now = k.getUTCHours() * 60 + k.getUTCMinutes();
+    return day > 0 && day < 6 && now >= hm(DATA.refresh_from || "09:00") && now <= hm(DATA.refresh_until || "15:40");
+  }
   function maybeRefresh(reason) {
     if (!db || !DATA.refresh_trigger || !holdings.length || DATA.sample) return;
     var age = Date.now() - (Date.parse(DATA.holdings_at || DATA.collected_at) || 0);
     var missing = holdings.some(function (h) { return !stockOf(h); });
-    if (reason !== "add" && !missing && age < (DATA.refresh_after_min || 30) * 60000) return;
+    if (reason !== "add" && (!marketOpen() || (!missing && age < (DATA.refresh_after_min || 60) * 60000))) return;
     var ref = db.doc("meta/refresh");
     ref.get().then(function (snap) {
       var last = snap.exists ? (Date.parse((snap.data() || {}).requested_at) || 0) : 0;

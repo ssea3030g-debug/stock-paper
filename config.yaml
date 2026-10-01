@@ -94,7 +94,7 @@ collectors:
       include: []            # 비우면 전체. 하나라도 포함하면 통과
       exclude: ["광고", "협찬"]
     dedupe: true             # 제목 유사도로 중복 기사 제거
-    max_collect: 60          # 요약 단계로 넘길 최대 기사 수 — Claude 가 이 중 '진짜 큰 뉴스' 3개를 고름
+    max_collect: 40          # 요약 단계로 넘길 최대 기사 수 — Claude 가 이 중 '진짜 큰 뉴스' 3개를 고름
     candidate_exclude: ["[포토]", "[사진]", "세일", "할인", "출시", "이벤트", "인터뷰", "[인사]", "[부고]", "날씨",
                         "캠페인", "축제", "박람회", "멤버십", "[소셜", "[반려동물]", "[리테일", "AG ", "금메달"]
 
@@ -133,7 +133,7 @@ collectors:
   holdings:                  # 앱 '내 종목' 탭에서 추가한 종목 (매일 아침 앱 저장소에서 읽어 옴)
     enabled: true
     news_days: 7             # 종목 뉴스 조회 기간
-    news_candidates: 12      # Claude 가 중요 뉴스를 고를 후보 수
+    news_candidates: 8       # Claude 가 중요 뉴스를 고를 후보 수
     filing_days: 180         # 국내 종목 실적 공시 조회 기간
 
   rumors:                    # 찌라시·풍문 레이더 — 언론의 미확인 보도 + DART 풍문 해명·조회공시
@@ -179,7 +179,9 @@ summary:
 # ── 앱 ───────────────────────────────────────────────────────
 app:
   refresh_trigger_id: trig_01QR6QctLxR9gssc9Nbj71mu   # 앱을 열 때 '내 종목' 갱신을 요청할 Claude 예약 작업
-  refresh_after_min: 30                               # 정보가 이보다 오래됐으면 열 때 갱신 요청
+  refresh_after_min: 60                               # 정보가 이보다 오래됐으면 열 때 갱신 요청
+  refresh_from: "09:00"                               # 자동 갱신은 평일 이 시간대(KST)에만 (주말·장외엔 요청 안 함)
+  refresh_until: "15:40"
 
 # ── 출력 ─────────────────────────────────────────────────────
 output:
