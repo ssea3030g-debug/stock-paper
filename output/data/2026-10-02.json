@@ -4,8 +4,8 @@
  "market_status": {
   "today_closed": false,
   "today_reason": null,
-  "last_session": "2026-10-01",
-  "last_session_label": "10/1(목)",
+  "last_session": "2026-10-02",
+  "last_session_label": "10/2(금)",
   "skipped_holidays": []
  },
  "holdings": [
@@ -14,7 +14,6 @@
    "market": "KR",
    "code": "005930",
    "name": "삼성전자",
-   "query": null,
    "added_at": "2026-09-25T13:53:50.863Z"
   },
   {
@@ -34,11 +33,11 @@
    "items": [
     {
      "name": "코스피",
-     "value": 6971.35,
+     "value": 6938.39013671875,
      "unit": "",
-     "change": 133.30996093750036,
-     "change_pct": 1.9495346645524652,
-     "as_of": "2026-10-01 15:30 KST",
+     "change": -32.9599609375,
+     "change_pct": -0.47279164689463893,
+     "as_of": "2026-10-02 10:58 기준 장중",
      "source": "Yahoo Finance",
      "source_url": "https://finance.yahoo.com/quote/%5EKS11",
      "extra": {
@@ -47,16 +46,16 @@
       "currency": "KRW",
       "long_name": "KOSPI Composite Index",
       "high52": 9385.59,
-      "low52": 0.0
+      "low52": 3522.54
      }
     },
     {
      "name": "코스닥",
-     "value": 894.29,
+     "value": 892.719970703125,
      "unit": "",
-     "change": 38.380026855468714,
-     "change_pct": 4.484119598988218,
-     "as_of": "2026-10-01 15:30 KST",
+     "change": -1.57000732421875,
+     "change_pct": -0.17555908740942477,
+     "as_of": "2026-10-02 10:58 기준 장중",
      "source": "Yahoo Finance",
      "source_url": "https://finance.yahoo.com/quote/%5EKQ11",
      "extra": {
@@ -65,16 +64,16 @@
       "currency": "KRW",
       "long_name": "Kosdaq Composite Index",
       "high52": 1229.42,
-      "low52": 0.0
+      "low52": 630.99
      }
     }
    ],
    "data": {
     "flows": {},
-    "session": "2026-10-01"
+    "session": "2026-10-02"
    },
    "note": null,
-   "error": "KOSPI/krx_openapi: 401 Client Error: Unauthorized for url: https://data-dbg.krx.co.kr/svc/apis/idx/kospi_dd_trd?basDd=20261001; KOSDAQ/krx_openapi: 401 Client Error: Unauthorized for url: https://data-dbg.krx.co.kr/svc/apis/idx/kosdaq_dd_trd?basDd=20261001; flows: KIS_APP_KEY/KIS_APP_SECRET 없음",
+   "error": "flows: KIS_APP_KEY/KIS_APP_SECRET 없음",
    "sources": [
     {
      "name": "Yahoo Finance",
@@ -142,7 +141,7 @@
     }
    ],
    "data": {},
-   "note": null,
+   "note": "미국 휴장 — 최근 거래일 2026-10-01 기준",
    "error": null,
    "sources": [
     {
@@ -157,11 +156,11 @@
    "items": [
     {
      "name": "원/달러 환율",
-     "value": 1355.7,
+     "value": 1359.6,
      "unit": "원",
-     "change": -2.7000000000000455,
-     "change_pct": -0.19876325088339555,
-     "as_of": "2026-10-01",
+     "change": 3.8999999999998636,
+     "change_pct": 0.28767426421773723,
+     "as_of": "2026-10-02",
      "source": "한국은행 ECOS",
      "source_url": "https://ecos.bok.or.kr/#/SearchStat",
      "extra": {
@@ -170,10 +169,10 @@
     },
     {
      "name": "WTI 유가",
-     "value": 92.91000366210938,
+     "value": 92.91999816894531,
      "unit": "달러",
-     "change": 2.4900054931640625,
-     "change_pct": 2.7538216584694126,
+     "change": 2.5,
+     "change_pct": 2.76487508363899,
      "as_of": "2026-10-01",
      "source": "Yahoo Finance",
      "source_url": "https://finance.yahoo.com/quote/CL=F",
@@ -189,10 +188,10 @@
     },
     {
      "name": "브렌트유",
-     "value": 102.20999908447266,
+     "value": 102.56999969482422,
      "unit": "달러",
-     "change": -1.3199996948242188,
-     "change_pct": -1.2749924759857933,
+     "change": -0.9599990844726562,
+     "change_pct": -0.9272665853296903,
      "as_of": "2026-10-01",
      "source": "Yahoo Finance",
      "source_url": "https://finance.yahoo.com/quote/BZ=F",
@@ -240,10 +239,10 @@
     },
     {
      "name": "금",
-     "value": 4207.7998046875,
+     "value": 4177.7998046875,
      "unit": "달러/온스",
-     "change": 21.099609375,
-     "change_pct": 0.5039675255138517,
+     "change": -8.900390625,
+     "change_pct": -0.21258724555832842,
      "as_of": "2026-10-01",
      "source": "Yahoo Finance",
      "source_url": "https://finance.yahoo.com/quote/GC=F",
@@ -253,7 +252,7 @@
       "currency": "USD",
       "long_name": "Gold Dec 26",
       "high52": 5586.2,
-      "low52": 3842.8,
+      "low52": 3861.1,
       "id": "gold"
      }
     }
@@ -7679,13 +7678,13 @@
      "db_id": "KR-005930",
      "resolved_from": null,
      "price": {
-      "value": 276000.0,
-      "change": 7500.0,
-      "change_pct": 2.793296089385475,
-      "as_of": "2026-10-01 15:30 KST",
+      "value": 273500.0,
+      "change": -2500.0,
+      "change_pct": -0.9057971014492754,
+      "as_of": "2026-10-02 최근가",
       "currency": "KRW",
       "high52": 374500.0,
-      "low52": 0.0,
+      "low52": 88700.0,
       "source": "Yahoo Finance",
       "url": "https://finance.yahoo.com/quote/005930.KS"
      },
@@ -7896,7 +7895,7 @@
       "value": 138.07000732421875,
       "change": 0.7700042724609375,
       "change_pct": 0.5608188312790277,
-      "as_of": "2026-10-01 16:00 ET",
+      "as_of": "2026-10-01 최근가",
       "currency": "USD",
       "high52": 322.54,
       "low52": 114.5,
@@ -8204,5 +8203,259 @@
    ]
   }
  },
- "holdings_at": "2026-10-02T06:46:56+09:00"
+ "holdings_at": "2026-10-02T11:03:21+09:00",
+ "morning": {
+  "korea_market": {
+   "id": "korea_market",
+   "ok": true,
+   "items": [
+    {
+     "name": "코스피",
+     "value": 6971.35,
+     "unit": "",
+     "change": 133.30996093750036,
+     "change_pct": 1.9495346645524652,
+     "as_of": "2026-10-01 15:30 KST",
+     "source": "Yahoo Finance",
+     "source_url": "https://finance.yahoo.com/quote/%5EKS11",
+     "extra": {
+      "symbol": "^KS11",
+      "tz": "Asia/Seoul",
+      "currency": "KRW",
+      "long_name": "KOSPI Composite Index",
+      "high52": 9385.59,
+      "low52": 0.0
+     }
+    },
+    {
+     "name": "코스닥",
+     "value": 894.29,
+     "unit": "",
+     "change": 38.380026855468714,
+     "change_pct": 4.484119598988218,
+     "as_of": "2026-10-01 15:30 KST",
+     "source": "Yahoo Finance",
+     "source_url": "https://finance.yahoo.com/quote/%5EKQ11",
+     "extra": {
+      "symbol": "^KQ11",
+      "tz": "Asia/Seoul",
+      "currency": "KRW",
+      "long_name": "Kosdaq Composite Index",
+      "high52": 1229.42,
+      "low52": 0.0
+     }
+    }
+   ],
+   "data": {
+    "flows": {},
+    "session": "2026-10-01"
+   },
+   "note": null,
+   "error": "KOSPI/krx_openapi: 401 Client Error: Unauthorized for url: https://data-dbg.krx.co.kr/svc/apis/idx/kospi_dd_trd?basDd=20261001; KOSDAQ/krx_openapi: 401 Client Error: Unauthorized for url: https://data-dbg.krx.co.kr/svc/apis/idx/kosdaq_dd_trd?basDd=20261001; flows: KIS_APP_KEY/KIS_APP_SECRET 없음",
+   "sources": [
+    {
+     "name": "Yahoo Finance",
+     "url": "https://finance.yahoo.com/quote/%5EKS11"
+    }
+   ]
+  },
+  "us_market": {
+   "id": "us_market",
+   "ok": true,
+   "items": [
+    {
+     "name": "다우존스",
+     "value": 50926.55859375,
+     "unit": "",
+     "change": 20.5078125,
+     "change_pct": 0.04028560885252083,
+     "as_of": "2026-10-01 16:00 ET",
+     "source": "Yahoo Finance",
+     "source_url": "https://finance.yahoo.com/quote/%5EDJI",
+     "extra": {
+      "symbol": "^DJI",
+      "tz": "America/New_York",
+      "currency": "USD",
+      "long_name": "Dow Jones Industrial Average",
+      "high52": 54744.33,
+      "low52": 45057.28
+     }
+    },
+    {
+     "name": "S&P 500",
+     "value": 7666.4501953125,
+     "unit": "",
+     "change": 14.91015625,
+     "change_pct": 0.19486477459283946,
+     "as_of": "2026-10-01 16:00 ET",
+     "source": "Yahoo Finance",
+     "source_url": "https://finance.yahoo.com/quote/%5EGSPC",
+     "extra": {
+      "symbol": "^GSPC",
+      "tz": "America/New_York",
+      "currency": "USD",
+      "long_name": "S&P 500",
+      "high52": 7816.7,
+      "low52": 6316.91
+     }
+    },
+    {
+     "name": "나스닥",
+     "value": 26871.595703125,
+     "unit": "",
+     "change": 10.53515625,
+     "change_pct": 0.03922092439952321,
+     "as_of": "2026-10-01 16:00 ET",
+     "source": "Yahoo Finance",
+     "source_url": "https://finance.yahoo.com/quote/%5EIXIC",
+     "extra": {
+      "symbol": "^IXIC",
+      "tz": "America/New_York",
+      "currency": "USD",
+      "long_name": "NASDAQ Composite",
+      "high52": 27288.79,
+      "low52": 20690.25
+     }
+    }
+   ],
+   "data": {},
+   "note": null,
+   "error": null,
+   "sources": [
+    {
+     "name": "Yahoo Finance",
+     "url": "https://finance.yahoo.com/quote/%5EDJI"
+    }
+   ]
+  },
+  "indicators": {
+   "id": "indicators",
+   "ok": true,
+   "items": [
+    {
+     "name": "원/달러 환율",
+     "value": 1355.7,
+     "unit": "원",
+     "change": -2.7000000000000455,
+     "change_pct": -0.19876325088339555,
+     "as_of": "2026-10-01",
+     "source": "한국은행 ECOS",
+     "source_url": "https://ecos.bok.or.kr/#/SearchStat",
+     "extra": {
+      "id": "usdkrw"
+     }
+    },
+    {
+     "name": "WTI 유가",
+     "value": 92.91000366210938,
+     "unit": "달러",
+     "change": 2.4900054931640625,
+     "change_pct": 2.7538216584694126,
+     "as_of": "2026-10-01",
+     "source": "Yahoo Finance",
+     "source_url": "https://finance.yahoo.com/quote/CL=F",
+     "extra": {
+      "symbol": "CL=F",
+      "tz": "America/New_York",
+      "currency": "USD",
+      "long_name": "Crude Oil Nov 26",
+      "high52": 119.48,
+      "low52": 54.98,
+      "id": "wti"
+     }
+    },
+    {
+     "name": "브렌트유",
+     "value": 102.20999908447266,
+     "unit": "달러",
+     "change": -1.3199996948242188,
+     "change_pct": -1.2749924759857933,
+     "as_of": "2026-10-01",
+     "source": "Yahoo Finance",
+     "source_url": "https://finance.yahoo.com/quote/BZ=F",
+     "extra": {
+      "symbol": "BZ=F",
+      "tz": "America/New_York",
+      "currency": "USD",
+      "long_name": "Brent Crude Oil Last Day Financial Futures",
+      "high52": 126.1,
+      "low52": 58.72,
+      "id": "brent"
+     }
+    },
+    {
+     "name": "미 국채 10년",
+     "value": 5.236999988555908,
+     "unit": "%",
+     "change": -0.0560002326965332,
+     "change_pct": null,
+     "as_of": "2026-10-01",
+     "source": "Yahoo Finance",
+     "source_url": "https://finance.yahoo.com/quote/%5ETNX",
+     "extra": {
+      "symbol": "^TNX",
+      "tz": "America/Chicago",
+      "currency": "USD",
+      "long_name": "CBOE Interest Rate 10 Year T Note",
+      "high52": 5.342,
+      "low52": 3.947,
+      "id": "ust10y"
+     }
+    },
+    {
+     "name": "국고채 3년",
+     "value": 4.01,
+     "unit": "%",
+     "change": -0.001000000000000334,
+     "change_pct": null,
+     "as_of": "2026-10-01",
+     "source": "한국은행 ECOS",
+     "source_url": "https://ecos.bok.or.kr/#/SearchStat",
+     "extra": {
+      "id": "ktb3y"
+     }
+    },
+    {
+     "name": "금",
+     "value": 4207.7998046875,
+     "unit": "달러/온스",
+     "change": 21.099609375,
+     "change_pct": 0.5039675255138517,
+     "as_of": "2026-10-01",
+     "source": "Yahoo Finance",
+     "source_url": "https://finance.yahoo.com/quote/GC=F",
+     "extra": {
+      "symbol": "GC=F",
+      "tz": "America/New_York",
+      "currency": "USD",
+      "long_name": "Gold Dec 26",
+      "high52": 5586.2,
+      "low52": 3842.8,
+      "id": "gold"
+     }
+    }
+   ],
+   "data": {},
+   "note": null,
+   "error": null,
+   "sources": [
+    {
+     "name": "한국은행 ECOS",
+     "url": "https://ecos.bok.or.kr/#/SearchStat"
+    },
+    {
+     "name": "Yahoo Finance",
+     "url": "https://finance.yahoo.com/quote/CL=F"
+    }
+   ]
+  }
+ },
+ "markets_at": "2026-10-02T11:03:21+09:00",
+ "morning_status": {
+  "today_closed": false,
+  "today_reason": null,
+  "last_session": "2026-10-01",
+  "last_session_label": "10/1(목)",
+  "skipped_holidays": []
+ }
 }
