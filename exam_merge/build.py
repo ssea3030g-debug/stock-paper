@@ -108,53 +108,36 @@ def crop_png(src, dpi, x0, y0, x1, y1, out):
 
 # ---------------------------------------------------------------- 원본 시험지 분석
 def find_boxes(w, h, data, dpi=100):
-    """긴 가로선 쌍으로 이루어진 큰 테두리 상자를 찾는다. 반환: [(x0,y0,x1,y1)] (pt)"""
-    segs = []
-    pat = re.compile(rb'[\x00-\x80]{%d,}' % int(2.8 * dpi))
-    for y in range(h):
-        row = data[y * w:(y + 1) * w]
-        for m in pat.finditer(row):
-            segs.append([y, y, m.start(), m.end()])
-    # 가까운 줄 합치기
-    merged = []
-    for s in segs:
-        for m in merged:
-            if s[0] - m[1] <= 3 and abs(s[2] - m[2]) <= 5 and abs(s[3] - m[3]) <= 5:
-                m[1] = s[1]
+    """세로 테두리 쌍으로 큰 상자를 찾는다(위·아래 가로줄이 없는 이어지는 상자 포함). 반환 [(x0,y0,x1,y1)] (pt)"""
+    f = 72.0 / dpi
+    pat = re.compile(rb'[\x00-\x80]{%d,}' % int(1.2 * dpi))
+    runs = []  # [x, y0, y1]
+    for x in range(w):
+        col = data[x::w]
+        for m in pat.finditer(col):
+            runs.append([x, m.start(), m.end()])
+    # 두꺼운 선(이웃한 x) 합치기
+    lines = []
+    for r in sorted(runs):
+        for l in lines:
+            if r[0] - l[0] <= 3 and abs(r[1] - l[1]) <= 8 and abs(r[2] - l[2]) <= 8:
+                l[0] = r[0]
                 break
         else:
-            merged.append(s)
-
-    def edge_ok(xa, xb, ya, yb):
-        ok = n = 0
-        for y in range(ya, yb, 3):
-            row = data[y * w + xa - 1: y * w + xa + 4]
-            row2 = data[y * w + xb - 4: y * w + xb + 1]
-            n += 1
-            if row and min(row) < 140 and row2 and min(row2) < 140:
-                ok += 1
-        return n and ok / n >= 0.85
-
+            lines.append(list(r))
+    wmin, wmax = 280 / f, 345 / f   # 상자 폭(pt 280~345)
     boxes = []
-    used = set()
-    merged.sort(key=lambda s: s[0])
-    for i, a in enumerate(merged):
-        if i in used:
-            continue
-        best = None
-        for j in range(i + 1, len(merged)):
-            b = merged[j]
-            if abs(b[2] - a[2]) > 6 or abs(b[3] - a[3]) > 6 or b[0] - a[1] < 30:
-                continue
-            if edge_ok(a[2], a[3], a[1], b[0]):
-                best = j
-        if best is not None:
-            b = merged[best]
-            for k in range(i, best + 1):
-                used.add(k)
-            f = 72.0 / dpi
-            boxes.append((a[2] * f, a[0] * f, a[3] * f, b[1] * f))
-    return boxes
+    for b in lines:                  # b = 오른쪽 변 후보
+        cands = [a for a in lines if wmin <= b[0] - a[0] <= wmax and abs(a[1] - b[1]) <= 10 and abs(a[2] - b[2]) <= 10]
+        if cands:
+            a = max(cands, key=lambda c: c[0])      # 가장 가까운(폭이 좁은) 왼쪽 변
+            boxes.append((a[0] * f, min(a[1], b[1]) * f, b[0] * f, max(a[2], b[2]) * f))
+    # 중복 제거
+    out = []
+    for bx in boxes:
+        if not any(abs(bx[0] - o[0]) < 4 and abs(bx[1] - o[1]) < 6 and abs(bx[3] - o[3]) < 6 for o in out):
+            out.append(bx)
+    return out
 
 
 class Exam:
