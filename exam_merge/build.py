@@ -223,31 +223,53 @@ class Exam:
             else:
                 cur = dict(page=pi, col=col, x0=ln['x0'], x1=ln['x1'], y0=ln['y0'], y1=ln['y1'])
                 segs.append(cur)
-        return [(s['page'], (s['x0'] - 3, s['y0'] - 3, s['x1'] + 3, s['y1'] + 3), True) for s in segs]
+        return [(s['page'], (s['x0'] - 3, s['y0'] - 1.5, s['x1'] + 3, s['y1'] + 1), True) for s in segs]
+
+
+def gray_of(png):
+    w, h = (int(v) for v in run(['identify', '-format', '%w %h', png]).stdout.decode().split())
+    return w, h, run(['convert', png, '-colorspace', 'gray', '-depth', '8', 'gray:-']).stdout
+
+
+def strip_hborder(png, top, bottom):
+    """상자 위/아래 가로 테두리 줄을 지워(잘라) 이어진 상자처럼 만든다"""
+    w, h, d = gray_of(png)
+    dark = lambda y: sum(1 for v in d[y * w:(y + 1) * w:4] if v < 128) > (w // 4) * 0.5
+    y0, y1 = 0, h
+    if top:
+        for y in range(min(14, h)):
+            if dark(y):
+                y0 = y + 1
+    if bottom:
+        for y in range(h - 1, max(h - 15, 0), -1):
+            if dark(y):
+                y1 = y
+    if y0 or y1 < h:
+        run(['convert', png, '-crop', f'{w}x{y1 - y0}+0+{y0}', '+repage', png])
 
 
 def cut_passage(exam, boxes, work, tag):
-    """지문 상자들을 잘라 한 장으로 이어 붙인다. 반환 (png, w_pt, h_pt)"""
+    """지문 상자(또는 글줄 묶음)들을 잘라 이음매 없이 한 장으로 이어 붙인다. 반환 (png, w_pt, h_pt, [(png,w,h)], unit)"""
     parts = []
+    plain_all = all(b[2] for b in boxes)
     for n, (pg, (x0, y0, x1, y1), plain) in enumerate(boxes):
         src = render_png(exam.path, pg, 220, os.path.join(work, f'o_{tag}_{pg}'))
         out = os.path.join(work, f'p_{tag}_{n}.png')
         crop_png(src, 220, x0 - 1, y0 - 1, x1 + 2, y1 + 2, out)
-        if plain:   # 테두리 없는 시험지: 다른 지문과 같게 얇은 테두리를 두른다
-            run(['convert', out, '-bordercolor', 'white', '-border', '10', '-bordercolor', 'black', '-border', '2', out])
+        if not plain:
+            strip_hborder(out, top=n > 0, bottom=n < len(boxes) - 1)
         parts.append(out)
     out = os.path.join(work, f'passage_{tag}.png')
     if len(parts) == 1:
         shutil.copy(parts[0], out)
     else:
-        run(['convert'] + parts + ['-background', 'white', '-gravity', 'NorthWest', '-append', out])
-
-    def dims(p):
-        size = run(['identify', '-format', '%w %h', p]).stdout.decode().split()
-        return int(size[0]) * 72 / 220.0, int(size[1]) * 72 / 220.0
-    w, h = dims(out)
+        run(['convert'] + parts + ['-background', 'white', '-gravity', 'North', '-append', out])
+    if plain_all:   # 테두리 없는 시험지: 다른 지문과 같게 얇은 테두리를 한 번 두른다
+        run(['convert', out, '-bordercolor', 'white', '-border', '10', '-bordercolor', 'black', '-border', '2', out])
+    w, h, _ = gray_of(out)
+    w, h = w * 72 / 220.0, h * 72 / 220.0
     unit = exam.pages()[boxes[0][0] - 1]['w'] / 841.89   # A3 원본=1, A4 원본≈0.71 (글자 실제 크기 보정)
-    return out, w, h, [(p,) + dims(p) for p in parts], unit
+    return out, w, h, [(out, w, h)], unit
 
 
 # ---------------------------------------------------------------- 변형본 분석
@@ -304,83 +326,76 @@ def question_blocks(item, var, work):
 
 # ---------------------------------------------------------------- 배치
 def split_png(png, cut_pt, h_pt, out_a, out_b):
-    """그림을 위에서 cut_pt(출력 pt) 이하의 빈 줄에서 둘로 자른다. 반환 (위쪽 높이 비율) 또는 None"""
-    w, h = (int(v) for v in run(['identify', '-format', '%w %h', png]).stdout.decode().split())
-    data = run(['convert', png, '-colorspace', 'gray', '-depth', '8', 'gray:-']).stdout
+    """그림을 위에서 cut_pt(출력 pt) 이하의 빈 줄에서 둘로 자른다(아래 조각 위쪽 빈 줄은 없앤다).
+    반환 (위 조각 비율, 아래 조각 비율) 또는 None"""
+    w, h, data = gray_of(png)
     k = h / h_pt
     xa, xb = int(w * 0.04), int(w * 0.96)       # 좌우 테두리는 빼고 본다
+    white = lambda y: min(data[y * w + xa: y * w + xb]) > 200
     y = min(int(cut_pt * k), h - 1)
-    while y > h * 0.15:
-        if min(data[y * w + xa: y * w + xb]) > 200 and min(data[(y - 1) * w + xa:(y - 1) * w + xb]) > 200:
-            break
+    while y > 1 and not (white(y) and white(y - 1)):
         y -= 1
-    else:
+    if y < h * 0.05 or y * 1.0 / k < 40:
         return None
+    yb = y
+    while yb < h - 1 and white(yb):
+        yb += 1
+    yb = max(y, yb - int(4 * k))                 # 줄 위 여백 조금 남김
     run(['convert', png, '-crop', f'{w}x{y}+0+0', '+repage', out_a])
-    run(['convert', png, '-crop', f'{w}x{h - y}+0+{y}', '+repage', out_b])
-    return y / h
+    run(['convert', png, '-crop', f'{w}x{h - yb}+0+{yb}', '+repage', out_b])
+    return y / h, (h - yb) / h
 
 
 def layout(passage, questions):
-    """지문은 왼쪽 단에만(넘치면 다음 쪽 왼쪽 단), 문제는 오른쪽 단에 쌓는다.
-    지문이 끝난 쪽부터는 문제가 두 단을 모두 쓴다. 반환 (쪽 목록, 배율). 쪽=list of (png,x,y,w,h)"""
-    parts, unit = passage[3], passage[4]
-    k = COLW / max(p[1] for p in parts)                        # 단 너비에 맞춘 배율
-    total = sum(p[2] for p in parts) * k + GAP_P * (len(parts) - 1)
-    if total > BOTTOM - TOP1 and total <= (BOTTOM - TOP1) * 1.1:  # 조금 넘치면 줄여서 한 쪽에
-        k *= (BOTTOM - TOP1) / total
+    """지문을 왼쪽 단 → 오른쪽 단 → 다음 쪽 순으로 흘려 넣고(단 끝에서는 줄 사이로 나눔),
+    이어서 문제를 남은 자리부터 차례로 넣는다. 반환 (쪽 목록, 배율). 쪽=list of (png,x,y,w,h)"""
+    png0, pw, ph, _, unit = passage
+    k = COLW / pw
+    if ph * k > BOTTOM - TOP1 and ph * k <= (BOTTOM - TOP1) * 1.1:   # 조금 넘치면 줄여서 한 단에
+        k = (BOTTOM - TOP1) / ph
     top = lambda p: TOP1 if p == 0 else TOPN
     pages = [[]]
+    st = dict(p=0, c=0, y=TOP1)
 
     def page(p):
         while len(pages) <= p:
             pages.append([])
         return pages[p]
 
-    # 지문: 왼쪽 단
-    p, y = 0, TOP1
-    queue = [(png, w * k, h * k) for png, w, h in parts]
-    n = 0
-    while queue:
-        png, w, h = queue.pop(0)
-        room = BOTTOM - y
-        if h <= room + 0.5:
-            page(p).append((png, COLX[0], y, w, h))
-            y += h + GAP_P
-            continue
-        if room > 90:
-            n += 1
-            a, b = png[:-4] + f'_a{n}.png', png[:-4] + f'_b{n}.png'
-            r = split_png(png, room, h, a, b)
-            if r:
-                page(p).append((a, COLX[0], y, w, h * r))
-                queue.insert(0, (b, w, h * (1 - r)))
-                p, y = p + 1, TOPN
-                continue
-        if y <= top(p) + 0.1:        # 빈 단인데도 안 들어가면 줄여서 넣는다
-            s = (BOTTOM - y) / h
-            page(p).append((png, COLX[0], y, w * s, h * s))
-            y += h * s + GAP_P
-            continue
-        p, y = p + 1, TOPN
-    last_passage_page = p
+    def next_col():
+        if st['c'] == 0:
+            st['c'] = 1
+        else:
+            st['c'], st['p'] = 0, st['p'] + 1
+            page(st['p'])
+        st['y'] = top(st['p'])
 
-    # 문제: 지문이 있는 쪽은 오른쪽 단, 그 뒤 쪽은 두 단
-    slots = lambda pp: [1] if pp <= last_passage_page else [0, 1]
-    pp, si, y = 0, 0, TOP1
-    for num, png, w, h in questions:
+    # 지문
+    png, w, h = png0, pw * k, ph * k
+    n = 0
+    while True:
+        room = BOTTOM - st['y']
+        if h <= room + 0.5:
+            page(st['p']).append((png, COLX[st['c']], st['y'], w, h))
+            st['y'] += h + GAP_Q
+            break
+        n += 1
+        a, b = png[:-4] + f'_a{n}.png', png[:-4] + f'_b{n}.png'
+        r = split_png(png, room, h, a, b) if room > 60 else None
+        if r:
+            page(st['p']).append((a, COLX[st['c']], st['y'], w, h * r[0]))
+            png, h = b, h * r[1]
+        next_col()
+
+    # 문제: 남은 자리에 차례로(들어갈 자리가 없으면 다음 단)
+    for num, qpng, qw, qh in questions:
         while True:
-            col = slots(pp)[si]
-            avail = BOTTOM - top(pp)
-            s = min(1.0, avail / h)
-            if y + h * s <= BOTTOM + 0.5 or y <= top(pp) + 0.1:
-                page(pp).append((png, QX[col], y, w * s, h * s))
-                y += h * s + GAP_Q
+            s = min(1.0, (BOTTOM - top(st['p'])) / qh)
+            if st['y'] + qh * s <= BOTTOM + 0.5 or st['y'] <= top(st['p']) + 0.1:
+                page(st['p']).append((qpng, QX[st['c']], st['y'], qw * s, qh * s))
+                st['y'] += qh * s + GAP_Q
                 break
-            si += 1
-            if si >= len(slots(pp)):
-                pp, si = pp + 1, 0
-            y = top(pp)
+            next_col()
     return pages, k * unit
 
 
