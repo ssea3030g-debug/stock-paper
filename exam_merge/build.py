@@ -20,6 +20,7 @@
 import argparse
 import glob
 import html
+import json
 import os
 import re
 import shutil
@@ -118,20 +119,30 @@ def find_boxes(w, h, data, dpi=100):
             runs.append([x, m.start(), m.end()])
     # 두꺼운 선(이웃한 x) 합치기
     lines = []
-    for r in sorted(runs):
+    for r in sorted(runs):           # 이웃한 x에서 겹치거나 이어지는 세로 조각은 한 선으로(살짝 기운 선 대응)
         for l in lines:
-            if r[0] - l[0] <= 3 and abs(r[1] - l[1]) <= 8 and abs(r[2] - l[2]) <= 8:
+            if r[0] - l[0] <= 3 and r[1] <= l[2] + 4 and r[2] >= l[1] - 4:
                 l[0] = r[0]
+                l[1], l[2] = min(l[1], r[1]), max(l[2], r[2])
                 break
         else:
             lines.append(list(r))
     wmin, wmax = 280 / f, 345 / f   # 상자 폭(pt 280~345)
-    boxes = []
+    pairs = []
     for b in lines:                  # b = 오른쪽 변 후보
-        cands = [a for a in lines if wmin <= b[0] - a[0] <= wmax and abs(a[1] - b[1]) <= 10 and abs(a[2] - b[2]) <= 10]
-        if cands:
-            a = max(cands, key=lambda c: c[0])      # 가장 가까운(폭이 좁은) 왼쪽 변
-            boxes.append((a[0] * f, min(a[1], b[1]) * f, b[0] * f, max(a[2], b[2]) * f))
+        for a in lines:
+            ov = min(a[2], b[2]) - max(a[1], b[1])
+            if (wmin <= b[0] - a[0] <= wmax and ov >= 0.8 * max(a[2] - a[1], b[2] - b[1])
+                    and (abs(a[1] - b[1]) <= 10 or abs(a[2] - b[2]) <= 10)):
+                pairs.append((b[0] - a[0], id(a), id(b), a, b))
+    pairs.sort(key=lambda p: p[0])   # 폭이 좁은 쌍부터(단 구분선과 짝지어지는 것 방지)
+    used_a, used_b, boxes = set(), set(), []
+    for _, ia, ib, a, b in pairs:
+        if ia in used_a or ib in used_b:
+            continue
+        used_a.add(ia)
+        used_b.add(ib)
+        boxes.append((a[0] * f, min(a[1], b[1]) * f, b[0] * f, max(a[2], b[2]) * f))
     # 중복 제거
     out = []
     for bx in boxes:
@@ -166,7 +177,7 @@ class Exam:
             boxes = find_boxes(w, h, data)
             inner = lambda b, o: o is not b and o[0] >= b[0] - 3 and o[2] <= b[2] + 3 and o[1] >= b[1] - 3 and o[3] <= b[3] + 3
             boxes = [b for b in boxes if not any(inner(o, b) for o in boxes)]
-            col = lambda x: 0 if x < pg['w'] / 2 else 1
+            col = lambda x: 0 if x < pg['w'] * 0.48 else 1
             for b in boxes:
                 ev.append(((pi, col((b[0] + b[2]) / 2), b[1]), 'B', dict(page=pi, box=b)))
             for ln in pg['lines']:
@@ -175,7 +186,7 @@ class Exam:
                 if m:
                     ev.append(((pi, cx, ln['y0']), 'H', dict(a=int(m.group(1)), b=int(m.group(2)), page=pi)))
                 elif re.fullmatch(r'\d{1,2}\.', ln['first']) and not any(
-                        b[0] <= ln['x0'] <= b[2] and b[1] <= ln['y0'] <= b[3] for b in boxes):
+                        b[0] <= ln['x0'] <= b[2] and b[1] - 4 <= ln['y0'] <= b[3] for b in boxes):
                     ev.append(((pi, cx, ln['y0']), 'Q', dict(page=pi)))
         ev.sort(key=lambda e: e[0])
         self._events = ev
@@ -191,6 +202,13 @@ class Exam:
                     if k2 != 'B':
                         break
                     got.append((d2['page'], d2['box'], False))
+                if got:   # 상자 바로 아래 각주(* …)도 지문에 포함
+                    pg, (x0, y0, x1, y1), _ = got[-1]
+                    for ln in self.pages()[pg - 1]['lines']:
+                        if (ln['text'].lstrip()[:1] in '*※' and x0 - 5 <= ln['x0'] <= x1
+                                and y1 - 2 <= ln['y0'] <= y1 + 45):
+                            y1 = max(y1, ln['y1'] + 2)
+                    got[-1] = (pg, (x0, y0, x1, y1), False)
                 return got or self._unboxed(key, a, b)
         return None
 
@@ -199,7 +217,7 @@ class Exam:
         rows = []
         for pi, pg in enumerate(self.pages(), 1):
             for ln in pg['lines']:
-                col = 0 if ln['x0'] < pg['w'] / 2 else 1
+                col = 0 if ln['x0'] < pg['w'] * 0.48 else 1
                 rows.append(((pi, col, ln['y0']), pi, col, ln))
         rows.sort(key=lambda r: r[0])
         segs, cur = [], None
@@ -404,6 +422,7 @@ CSS = '''@page{size:A4;margin:0}html,body{margin:0;padding:0;background:#fff}
 .pg{position:relative;width:%(w)spt;height:%(h)spt;overflow:hidden;page-break-after:always}
 .pg img,.pg div{position:absolute}
 .n{font:9pt/1 "DejaVu Sans","Liberation Sans",sans-serif;text-align:right;color:#111}
+.ans{font:7.5pt/1 "DejaVu Sans","WenQuanYi Zen Hei",sans-serif;color:#222;white-space:nowrap;transform:rotate(180deg)}
 .t{font:7.6pt/1 "DejaVu Sans","WenQuanYi Zen Hei",sans-serif;color:#111;white-space:nowrap}
 ''' % dict(w=A4W, h=A4H)
 
@@ -421,6 +440,14 @@ def pagenum(n, total):
     return rect(534, 15.5, 568, 31.5) + f'<div class="n" style="right:{A4W - 565.3:.2f}pt;top:18pt">{n}/{total}</div>'
 
 
+def answer_div(ans):
+    """정답을 쪽 오른쪽 아래(바닥글 아래)에 가로로, 거꾸로(180° 회전) 적는다"""
+    if not ans:
+        return ''
+    txt = '정답  ' + '  '.join(f'{k}. {v}' for k, v in sorted(ans.items(), key=lambda kv: int(kv[0])))
+    return f'<div class="ans" style="right:{A4W - 565.3:.2f}pt;top:824pt">{html.escape(txt)}</div>'
+
+
 def build_html(plan, total, hdr, ftr, title_png):
     """plan: 항목별 {'kind':'passage'|'asis'|'raw', ...}"""
     out = [f'<!doctype html><meta charset="utf-8"><style>{CSS}</style>']
@@ -432,7 +459,7 @@ def build_html(plan, total, hdr, ftr, title_png):
             continue
         if e['kind'] == 'asis':      # 원본을 못 찾은 지문: 변형본 쪽 그대로
             n += 1
-            out.append(f'<div class="pg">{img(e["png"], 0, 0, A4W, A4H)}{pagenum(n, total)}</div>')
+            out.append(f'<div class="pg">{img(e["png"], 0, 0, A4W, A4H)}{pagenum(n, total)}{answer_div(e.get("ans"))}</div>')
             continue
         for pi, items in enumerate(e['pages']):
             n += 1
@@ -443,6 +470,8 @@ def build_html(plan, total, hdr, ftr, title_png):
             body += f'<div style="left:297.4pt;top:{top - 2:.1f}pt;height:{BOTTOM - top - 2:.1f}pt;border-left:0.35pt solid #000"></div>'
             for png, x, y, w, h in items:
                 body += img(png, x, y, w, h)
+            if pi == len(e['pages']) - 1:
+                body += answer_div(e.get('ans'))
             out.append(f'<div class="pg">{body}</div>')
     return '\n'.join(out)
 
@@ -471,6 +500,8 @@ def main():
     ap.add_argument('--out', required=True)
     ap.add_argument('--only', help='지문 번호 목록 예: 인문08,과학05')
     ap.add_argument('--work')
+    ap.add_argument('--answers', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'answers.json'),
+                    help='정답 파일(JSON). 없으면 정답 표시 안 함')
     a = ap.parse_args()
     work = os.path.abspath(a.work or tempfile.mkdtemp(prefix='exam_merge_'))
     os.makedirs(work, exist_ok=True)
@@ -489,6 +520,10 @@ def main():
         else:
             print('건너뜀(학년도·월을 못 찾음):', os.path.basename(p), file=sys.stderr)
 
+    answers = {}
+    if a.answers and os.path.exists(a.answers):
+        with open(a.answers, encoding='utf8') as f:
+            answers = json.load(f)
     vpages, items = parse_variant(var, work)
     only = set(x.strip() for x in a.only.split(',')) if a.only else None
     sid = lambda it: re.sub(r'\s+', '', ' '.join(it['title'].split()[:2]))
@@ -516,7 +551,7 @@ def main():
         ex = exams.get((yy, mm))
         if not ex:
             plan.append(dict(kind='asis', png=render_png(var, it['page'], 200, os.path.join(work, f'asis_{it["page"]}')),
-                             page=it['page'], sid=s))
+                             page=it['page'], sid=s, ans=answers.get(s)))
             report.append((s, f'MISSING 원본 시험지 없음({yy}학년도 {mm}월)'))
             continue
         boxes = ex.passage_boxes(qa, qb)
@@ -531,7 +566,7 @@ def main():
             report.append((s, 'FAIL 문제를 못 찾음'))
             continue
         pages, scale = layout(passage, qs)
-        plan.append(dict(kind='passage', pages=pages, page=it['page'], sid=s))
+        plan.append(dict(kind='passage', pages=pages, page=it['page'], sid=s, ans=answers.get(s)))
         report.append((s, f'OK 문제 {len(qs)}개 · 지문 상자 {len(boxes)}개 · 지문 배율 {scale:.2f} · {len(pages)}쪽'))
 
     # 표지·색인(원본 변형본 1~2쪽)은 전체를 만들 때만 포함
