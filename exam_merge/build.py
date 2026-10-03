@@ -182,25 +182,59 @@ class Exam:
         return ev
 
     def passage_boxes(self, a, b):
+        """[(쪽, (x0,y0,x1,y1), 테두리없음)] — 상자가 있으면 상자, 없으면(테두리 없는 시험지) 글줄 묶음을 쓴다"""
         ev = self.events()
-        for i, (_, kind, d) in enumerate(ev):
+        for i, (key, kind, d) in enumerate(ev):
             if kind == 'H' and d['a'] == a and d['b'] == b:
                 got = []
                 for _, k2, d2 in ev[i + 1:]:
                     if k2 != 'B':
                         break
-                    got.append((d2['page'], d2['box']))
-                return got
+                    got.append((d2['page'], d2['box'], False))
+                return got or self._unboxed(key, a, b)
         return None
+
+    def _unboxed(self, hkey, a, b):
+        """발문 다음부터 첫 문항(또는 다음 발문) 앞까지의 글줄을 단별로 묶어 영역으로 만든다"""
+        rows = []
+        for pi, pg in enumerate(self.pages(), 1):
+            for ln in pg['lines']:
+                col = 0 if ln['x0'] < pg['w'] / 2 else 1
+                rows.append(((pi, col, ln['y0']), pi, col, ln))
+        rows.sort(key=lambda r: r[0])
+        segs, cur = [], None
+        started = False
+        for key, pi, col, ln in rows:
+            if not started:
+                if key == hkey and re.search(r'\[\s*%d\s*[%s]\s*%d\s*\]' % (a, TILDE, b), ln['text']):
+                    started = True
+                continue
+            ph = self.pages()[pi - 1]['h']
+            if (ln['y0'] < 0.095 * ph or ln['y0'] > 0.93 * ph      # 쪽 머리글·바닥글
+                    or ln['text'].strip() in ('국어 영역', '고2')
+                    or re.fullmatch(r'[\d\s/]+', ln['text'])):
+                continue
+            if re.fullmatch(r'\d{1,2}\.', ln['first']) or re.search(r'\[\s*\d+\s*[%s]\s*\d+\s*\]' % TILDE, ln['text']):
+                break
+            if cur and cur['page'] == pi and cur['col'] == col:
+                cur['x0'] = min(cur['x0'], ln['x0'])
+                cur['x1'] = max(cur['x1'], ln['x1'])
+                cur['y1'] = ln['y1']
+            else:
+                cur = dict(page=pi, col=col, x0=ln['x0'], x1=ln['x1'], y0=ln['y0'], y1=ln['y1'])
+                segs.append(cur)
+        return [(s['page'], (s['x0'] - 3, s['y0'] - 3, s['x1'] + 3, s['y1'] + 3), True) for s in segs]
 
 
 def cut_passage(exam, boxes, work, tag):
     """지문 상자들을 잘라 한 장으로 이어 붙인다. 반환 (png, w_pt, h_pt)"""
     parts = []
-    for n, (pg, (x0, y0, x1, y1)) in enumerate(boxes):
+    for n, (pg, (x0, y0, x1, y1), plain) in enumerate(boxes):
         src = render_png(exam.path, pg, 220, os.path.join(work, f'o_{tag}_{pg}'))
         out = os.path.join(work, f'p_{tag}_{n}.png')
         crop_png(src, 220, x0 - 1, y0 - 1, x1 + 2, y1 + 2, out)
+        if plain:   # 테두리 없는 시험지: 다른 지문과 같게 얇은 테두리를 두른다
+            run(['convert', out, '-bordercolor', 'white', '-border', '10', '-bordercolor', 'black', '-border', '2', out])
         parts.append(out)
     out = os.path.join(work, f'passage_{tag}.png')
     if len(parts) == 1:
@@ -212,7 +246,8 @@ def cut_passage(exam, boxes, work, tag):
         size = run(['identify', '-format', '%w %h', p]).stdout.decode().split()
         return int(size[0]) * 72 / 220.0, int(size[1]) * 72 / 220.0
     w, h = dims(out)
-    return out, w, h, [(p,) + dims(p) for p in parts]
+    unit = exam.pages()[boxes[0][0] - 1]['w'] / 841.89   # A3 원본=1, A4 원본≈0.71 (글자 실제 크기 보정)
+    return out, w, h, [(p,) + dims(p) for p in parts], unit
 
 
 # ---------------------------------------------------------------- 변형본 분석
@@ -274,10 +309,11 @@ def layout(passage, questions):
     page_top = lambda p: TOP1 if p == 0 else TOPN
     pw, ph = passage[1], passage[2]
     parts = passage[3]
+    unit = passage[4]
     s_one = min(COLW / pw, (BOTTOM - TOP1 - 4) / ph)
     state = dict(p=0, c=0, y=TOP1)
     mode = 'side'
-    if s_one >= MIN_SCALE:
+    if s_one * unit >= MIN_SCALE:
         w, h = pw * s_one, ph * s_one
         pages[0].append((passage[0], COLX[0], TOP1, w, h))
         state.update(c=1, y=TOP1)
@@ -308,7 +344,7 @@ def layout(passage, questions):
         state['y'] += GAP_Q - GAP_P
     for num, png, w, h in questions:
         place(png, w, h, GAP_Q)
-    return pages, mode, (s_one if mode == 'side' else COLW / pw)
+    return pages, mode, (s_one * unit if mode == 'side' else COLW / pw * unit)
 
 
 # ---------------------------------------------------------------- HTML 작성
