@@ -303,48 +303,85 @@ def question_blocks(item, var, work):
 
 
 # ---------------------------------------------------------------- 배치
-def layout(passage, questions):
-    """passage=(png,w,h), questions=[(num,png,w,h)] → 쪽 목록. 쪽=list of (png,x,y,w,h)"""
-    pages = [[]]
-    page_top = lambda p: TOP1 if p == 0 else TOPN
-    pw, ph = passage[1], passage[2]
-    parts = passage[3]
-    unit = passage[4]
-    s_one = min(COLW / pw, (BOTTOM - TOP1 - 4) / ph)
-    state = dict(p=0, c=0, y=TOP1)
-    mode = 'side'
-    if s_one * unit >= MIN_SCALE:
-        w, h = pw * s_one, ph * s_one
-        pages[0].append((passage[0], COLX[0], TOP1, w, h))
-        state.update(c=1, y=TOP1)
+def split_png(png, cut_pt, h_pt, out_a, out_b):
+    """그림을 위에서 cut_pt(출력 pt) 이하의 빈 줄에서 둘로 자른다. 반환 (위쪽 높이 비율) 또는 None"""
+    w, h = (int(v) for v in run(['identify', '-format', '%w %h', png]).stdout.decode().split())
+    data = run(['convert', png, '-colorspace', 'gray', '-depth', '8', 'gray:-']).stdout
+    k = h / h_pt
+    xa, xb = int(w * 0.04), int(w * 0.96)       # 좌우 테두리는 빼고 본다
+    y = min(int(cut_pt * k), h - 1)
+    while y > h * 0.15:
+        if min(data[y * w + xa: y * w + xb]) > 200 and min(data[(y - 1) * w + xa:(y - 1) * w + xb]) > 200:
+            break
+        y -= 1
     else:
-        mode = 'flow'
+        return None
+    run(['convert', png, '-crop', f'{w}x{y}+0+0', '+repage', out_a])
+    run(['convert', png, '-crop', f'{w}x{h - y}+0+{y}', '+repage', out_b])
+    return y / h
 
-    def place(png, w, h, gap):
-        scale = 1.0
-        avail = BOTTOM - page_top(state['p'])
-        if h > avail:
-            scale = avail / h
-        w, h = w * scale, h * scale
-        if state['y'] + h > BOTTOM + 0.5 and state['y'] > page_top(state['p']) + 0.1:
-            if state['c'] == 0:
-                state['c'] = 1
-            else:
-                state['c'] = 0
-                state['p'] += 1
-                pages.append([])
-            state['y'] = page_top(state['p'])
-        pages[state['p']].append((png, QX[state['c']], state['y'], w, h))
-        state['y'] += h + gap
 
-    if mode == 'flow':
-        for png, w, h in parts:   # 지문 상자를 한 개씩 단에 흘려 넣는다
-            k = COLW / w
-            place(png, w * k, h * k, GAP_P)
-        state['y'] += GAP_Q - GAP_P
+def layout(passage, questions):
+    """지문은 왼쪽 단에만(넘치면 다음 쪽 왼쪽 단), 문제는 오른쪽 단에 쌓는다.
+    지문이 끝난 쪽부터는 문제가 두 단을 모두 쓴다. 반환 (쪽 목록, 배율). 쪽=list of (png,x,y,w,h)"""
+    parts, unit = passage[3], passage[4]
+    k = COLW / max(p[1] for p in parts)                        # 단 너비에 맞춘 배율
+    total = sum(p[2] for p in parts) * k + GAP_P * (len(parts) - 1)
+    if total > BOTTOM - TOP1 and total <= (BOTTOM - TOP1) * 1.1:  # 조금 넘치면 줄여서 한 쪽에
+        k *= (BOTTOM - TOP1) / total
+    top = lambda p: TOP1 if p == 0 else TOPN
+    pages = [[]]
+
+    def page(p):
+        while len(pages) <= p:
+            pages.append([])
+        return pages[p]
+
+    # 지문: 왼쪽 단
+    p, y = 0, TOP1
+    queue = [(png, w * k, h * k) for png, w, h in parts]
+    n = 0
+    while queue:
+        png, w, h = queue.pop(0)
+        room = BOTTOM - y
+        if h <= room + 0.5:
+            page(p).append((png, COLX[0], y, w, h))
+            y += h + GAP_P
+            continue
+        if room > 90:
+            n += 1
+            a, b = png[:-4] + f'_a{n}.png', png[:-4] + f'_b{n}.png'
+            r = split_png(png, room, h, a, b)
+            if r:
+                page(p).append((a, COLX[0], y, w, h * r))
+                queue.insert(0, (b, w, h * (1 - r)))
+                p, y = p + 1, TOPN
+                continue
+        if y <= top(p) + 0.1:        # 빈 단인데도 안 들어가면 줄여서 넣는다
+            s = (BOTTOM - y) / h
+            page(p).append((png, COLX[0], y, w * s, h * s))
+            y += h * s + GAP_P
+            continue
+        p, y = p + 1, TOPN
+    last_passage_page = p
+
+    # 문제: 지문이 있는 쪽은 오른쪽 단, 그 뒤 쪽은 두 단
+    slots = lambda pp: [1] if pp <= last_passage_page else [0, 1]
+    pp, si, y = 0, 0, TOP1
     for num, png, w, h in questions:
-        place(png, w, h, GAP_Q)
-    return pages, mode, (s_one * unit if mode == 'side' else COLW / pw * unit)
+        while True:
+            col = slots(pp)[si]
+            avail = BOTTOM - top(pp)
+            s = min(1.0, avail / h)
+            if y + h * s <= BOTTOM + 0.5 or y <= top(pp) + 0.1:
+                page(pp).append((png, QX[col], y, w * s, h * s))
+                y += h * s + GAP_Q
+                break
+            si += 1
+            if si >= len(slots(pp)):
+                pp, si = pp + 1, 0
+            y = top(pp)
+    return pages, k * unit
 
 
 # ---------------------------------------------------------------- HTML 작성
@@ -478,9 +515,9 @@ def main():
         if not qs:
             report.append((s, 'FAIL 문제를 못 찾음'))
             continue
-        pages, mode, scale = layout(passage, qs)
+        pages, scale = layout(passage, qs)
         plan.append(dict(kind='passage', pages=pages, page=it['page'], sid=s))
-        report.append((s, f'OK 문제 {len(qs)}개 · 지문 상자 {len(boxes)}개 · {mode} 배율 {scale:.2f} · {len(pages)}쪽'))
+        report.append((s, f'OK 문제 {len(qs)}개 · 지문 상자 {len(boxes)}개 · 지문 배율 {scale:.2f} · {len(pages)}쪽'))
 
     # 표지·색인(원본 변형본 1~2쪽)은 전체를 만들 때만 포함
     front = []
