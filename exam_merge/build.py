@@ -264,26 +264,74 @@ def strip_hborder(png, top, bottom):
                 y1 = y
     if y0 or y1 < h:
         run(['convert', png, '-crop', f'{w}x{y1 - y0}+0+{y0}', '+repage', png])
+    return y0
 
 
-def cut_passage(exam, boxes, work, tag):
-    """지문 상자(또는 글줄 묶음)들을 잘라 이음매 없이 한 장으로 이어 붙인다. 반환 (png, w_pt, h_pt, [(png,w,h)], unit)"""
-    parts = []
+def find_phrase(words, phrase):
+    """단어 목록(읽는 순서)에서 띄어쓰기를 무시하고 구절을 찾아 해당 단어들을 돌려준다"""
+    key = re.sub(r'\s+', '', phrase)
+    text, owner = '', []
+    for i, w in enumerate(words):
+        t = re.sub(r'\s+', '', w['t'])
+        text += t
+        owner += [i] * len(t)
+    k = text.find(key)
+    if k < 0:
+        return None
+    return [words[i] for i in sorted(set(owner[k:k + len(key)]))]
+
+
+def cut_passage(exam, boxes, work, tag, marks=None):
+    """지문 상자(또는 글줄 묶음)들을 잘라 이음매 없이 한 장으로 이어 붙인다.
+    marks=[(표시, 구절)]이면 해당 구절에 밑줄을 긋고 왼쪽 여백에 (표시)를 적는다.
+    반환 (png, w_pt, h_pt, [(png,w,h)], unit)"""
+    K = 220 / 72.0
+    parts, found = [], []      # found: (표시, 조각 번호, [(x0,x1,y_밑줄)] px)
     plain_all = all(b[2] for b in boxes)
     for n, (pg, (x0, y0, x1, y1), plain) in enumerate(boxes):
         src = render_png(exam.path, pg, 220, os.path.join(work, f'o_{tag}_{pg}'))
         out = os.path.join(work, f'p_{tag}_{n}.png')
         crop_png(src, 220, x0 - 1, y0 - 1, x1 + 2, y1 + 2, out)
+        cut_top = 0
         if not plain:
-            strip_hborder(out, top=n > 0, bottom=n < len(boxes) - 1)
+            cut_top = strip_hborder(out, top=n > 0, bottom=n < len(boxes) - 1)
+        for label, phrase in (marks or []):
+            if any(f[0] == label for f in found):
+                continue
+            ws = [w for w in words_of_page(exam.path, pg)
+                  if x0 <= (w['x0'] + w['x1']) / 2 <= x1 and y0 <= (w['y0'] + w['y1']) / 2 <= y1]
+            ws.sort(key=lambda w: (round(w['y0'] / 4), w['x0']))
+            hit = find_phrase(ws, phrase)
+            if hit:
+                lines = {}
+                for w in hit:
+                    lines.setdefault(round(w['y0'] / 4), []).append(w)
+                segs = [((min(w['x0'] for w in ln) - (x0 - 1)) * K, (max(w['x1'] for w in ln) - (x0 - 1)) * K,
+                         (max(w['y1'] for w in ln) - (y0 - 1)) * K + 2 - cut_top) for _, ln in sorted(lines.items())]
+                found.append((label, n, segs))
         parts.append(out)
     out = os.path.join(work, f'passage_{tag}.png')
     if len(parts) == 1:
         shutil.copy(parts[0], out)
     else:
         run(['convert'] + parts + ['-background', 'white', '-gravity', 'North', '-append', out])
+    bo = 0
     if plain_all:   # 테두리 없는 시험지: 다른 지문과 같게 얇은 테두리를 한 번 두른다
         run(['convert', out, '-bordercolor', 'white', '-border', '10', '-bordercolor', 'black', '-border', '2', out])
+        bo = 12
+    if found:       # 밑줄과 왼쪽 여백의 (표시)
+        dims = [gray_of(p)[:2] for p in parts]
+        wmax = max(d[0] for d in dims)
+        margin = 70
+        run(['convert', out, '-background', 'white', '-gravity', 'West', '-splice', f'{margin}x0', out])
+        draw = []
+        for label, n, segs in found:
+            dx = (wmax - dims[n][0]) // 2 + bo + margin
+            dy = sum(d[1] for d in dims[:n]) + bo
+            for xa, xb, yu in segs:
+                draw += ['-draw', f'rectangle {xa + dx:.0f},{yu + dy:.0f} {xb + dx:.0f},{yu + dy + 2:.0f}']
+            draw += ['-draw', f"text 4,{segs[0][2] + dy - 4:.0f} '({label})'"]
+        run(['convert', out, '-fill', 'black', '-font', 'DejaVu-Sans-Bold', '-pointsize', '30'] + draw + [out])
     w, h, _ = gray_of(out)
     w, h = w * 72 / 220.0, h * 72 / 220.0
     unit = exam.pages()[boxes[0][0] - 1]['w'] / 841.89   # A3 원본=1, A4 원본≈0.71 (글자 실제 크기 보정)
@@ -349,6 +397,15 @@ def split_png(png, cut_pt, h_pt, out_a, out_b):
     w, h, data = gray_of(png)
     k = h / h_pt
     xa, xb = int(w * 0.04), int(w * 0.96)       # 좌우 테두리는 빼고 본다
+    rows = range(0, h, max(1, h // 200))
+    edges = [x for x in range(w) if sum(1 for y in rows if data[y * w + x] < 128) > len(rows) * 0.8]
+    if edges:                                     # 세로 테두리선 안쪽만 본다
+        left = [x for x in edges if x < w / 2]
+        right = [x for x in edges if x > w / 2]
+        if left:
+            xa = max(xa, max(left) + 3)
+        if right:
+            xb = min(xb, min(right) - 3)
     white = lambda y: min(data[y * w + xa: y * w + xb]) > 200
     y = min(int(cut_pt * k), h - 1)
     while y > 1 and not (white(y) and white(y - 1)):
@@ -403,6 +460,11 @@ def layout(passage, questions):
         if r:
             page(st['p']).append((a, COLX[st['c']], st['y'], w, h * r[0]))
             png, h = b, h * r[1]
+        elif st['y'] <= top(st['p']) + 0.1:      # 빈 단에서도 못 나누면 줄여서 넣는다(무한 반복 방지)
+            sc = room / h
+            page(st['p']).append((png, COLX[st['c']], st['y'], w * sc, h * sc))
+            st['y'] += h * sc + GAP_Q
+            break
         next_col()
 
     # 문제: 남은 자리에 차례로(들어갈 자리가 없으면 다음 단)
@@ -502,6 +564,8 @@ def main():
     ap.add_argument('--work')
     ap.add_argument('--answers', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'answers.json'),
                     help='정답 파일(JSON). 없으면 정답 표시 안 함')
+    ap.add_argument('--marks', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'marks.json'),
+                    help='지문 표시어 파일(JSON): {"인문01": [["a", "구절"], ...]}')
     a = ap.parse_args()
     work = os.path.abspath(a.work or tempfile.mkdtemp(prefix='exam_merge_'))
     os.makedirs(work, exist_ok=True)
@@ -524,6 +588,10 @@ def main():
     if a.answers and os.path.exists(a.answers):
         with open(a.answers, encoding='utf8') as f:
             answers = json.load(f)
+    marks = {}
+    if a.marks and os.path.exists(a.marks):
+        with open(a.marks, encoding='utf8') as f:
+            marks = {k: v for k, v in json.load(f).items() if not k.startswith('_')}
     vpages, items = parse_variant(var, work)
     only = set(x.strip() for x in a.only.split(',')) if a.only else None
     sid = lambda it: re.sub(r'\s+', '', ' '.join(it['title'].split()[:2]))
@@ -560,7 +628,7 @@ def main():
                              page=it['page'], sid=s))
             report.append((s, f'FAIL 발문 [{qa}~{qb}] 또는 지문 상자를 못 찾음'))
             continue
-        passage = cut_passage(ex, boxes, work, s)
+        passage = cut_passage(ex, boxes, work, s, marks.get(s))
         qs = question_blocks(it, var, work)
         if not qs:
             report.append((s, 'FAIL 문제를 못 찾음'))
