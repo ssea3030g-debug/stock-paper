@@ -319,6 +319,9 @@ def cut_passage(exam, boxes, work, tag, marks=None):
     if plain_all:   # 테두리 없는 시험지: 다른 지문과 같게 얇은 테두리를 한 번 두른다
         run(['convert', out, '-bordercolor', 'white', '-border', '10', '-bordercolor', 'black', '-border', '2', out])
         bo = 12
+    for label, phrase in (marks or []):
+        if not any(f[0] == label for f in found):
+            print(f'  경고: {tag} 표시어 ({label}) 구절을 원문에서 못 찾음: {phrase[:20]}…', file=sys.stderr)
     if found:       # 밑줄과 왼쪽 여백의 (표시)
         dims = [gray_of(p)[:2] for p in parts]
         wmax = max(d[0] for d in dims)
