@@ -45,7 +45,9 @@ body{{margin:0;background:#fff}}
 table{{border-collapse:collapse;width:100%;margin-top:5pt;font-size:8.8pt;line-height:11.5pt}}
 td,th{{border:0.5pt solid #000;padding:2pt 2.5pt;text-align:center;vertical-align:middle}}
 th{{font-weight:bold;background:#f2f2f2}}
-td:first-child,th{{white-space:nowrap}}
+table{{table-layout:auto}}
+td:first-child{{white-space:nowrap}}
+th{{white-space:normal;word-break:keep-all;line-height:11pt}}
 .ch{{margin-top:4pt;padding-left:1.15em;text-indent:-1.15em}}
 .grid{{display:grid;grid-template-columns:1fr 1fr 1fr}}
 .bl{{padding-left:1.2em;text-indent:-1.2em;margin-top:1pt}}
