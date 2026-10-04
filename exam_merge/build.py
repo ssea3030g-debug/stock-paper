@@ -300,7 +300,6 @@ def cut_passage(exam, boxes, work, tag, marks=None):
                 continue
             ws = [w for w in words_of_page(exam.path, pg)
                   if x0 <= (w['x0'] + w['x1']) / 2 <= x1 and y0 <= (w['y0'] + w['y1']) / 2 <= y1]
-            ws.sort(key=lambda w: (round(w['y0'] / 4), w['x0']))
             hit = find_phrase(ws, phrase)
             if hit:
                 lines = {}
