@@ -4,7 +4,8 @@
   python3 exam_merge/render_custom.py            # custom_questions/*.json → 같은 이름의 .png
 
 글꼴은 변형본 PDF에 들어 있던 나눔명조 부분 글꼴(fonts/, SIL OFL)을 쓴다.
-build.py는 custom_questions/<지문>_<번호>.png가 있으면 변형본의 그 문항 대신 이 그림을 넣는다.
+build.py는 custom_questions/<지문>_<번호>.png가 있으면 변형본의 그 문항 대신 이 그림을 넣고,
+custom_questions/<지문>/q<번호>.png 묶음이 있으면 그 지문의 문항 전체를 새 문항으로 바꾼다(정답은 각 json의 answer).
 """
 import glob
 import html
@@ -38,15 +39,20 @@ td,th{{border:0.5pt solid #000;padding:2pt 2.5pt;text-align:center;vertical-alig
 th{{font-weight:bold;background:#f2f2f2}}
 td:first-child,th{{white-space:nowrap}}
 .ch{{margin-top:4pt}}
+.bl{{padding-left:1.2em;text-indent:-1.2em;margin-top:1pt}}
+.ans{{margin:10pt 0 4pt 10pt;display:flex;align-items:flex-end}}
+.ans span{{flex:1;border-bottom:0.6pt solid #000;margin-left:8pt;height:10pt}}
 '''
 
 
 def html_of(q):
     out = [f'<div class="q"><div class="stem">{html.escape(q["stem"])}</div>']
-    if q.get('bogi_text') or q.get('table'):
+    if q.get('bogi_text') or q.get('table') or q.get('bogi_lines'):
         out.append('<div class="bogi"><div class="lab"><span>&lt;보 기&gt;</span></div>')
         if q.get('bogi_text'):
             out.append(f'<div>{html.escape(q["bogi_text"])}</div>')
+        for ln in q.get('bogi_lines', []):
+            out.append(f'<div class="bl">{html.escape(ln)}</div>')
         if q.get('table'):
             rows = q['table']
             out.append('<table><tr>' + ''.join(f'<th>{html.escape(c)}</th>' for c in rows[0]) + '</tr>')
@@ -54,8 +60,10 @@ def html_of(q):
                 out.append('<tr>' + ''.join(f'<td>{html.escape(c)}</td>' for c in r) + '</tr>')
             out.append('</table>')
         out.append('</div>')
-    for i, c in enumerate(q['choices']):
+    for i, c in enumerate(q.get('choices', [])):
         out.append(f'<div class="ch">{"①②③④⑤"[i]} {html.escape(c)}</div>')
+    if q.get('short'):
+        out.append('<div class="ans">답: <span></span></div>')
     out.append('</div>')
     return '\n'.join(out)
 
@@ -81,7 +89,8 @@ for (const p of [process.env.PLAYWRIGHT_PATH, '/opt/node22/lib/node_modules/play
 def main():
     jobs = []
     tmp = tempfile.mkdtemp(prefix='custom_q_')
-    for j in sorted(glob.glob(os.path.join(HERE, 'custom_questions', '*.json'))):
+    for j in sorted(glob.glob(os.path.join(HERE, 'custom_questions', '*.json')) +
+                    glob.glob(os.path.join(HERE, 'custom_questions', '*', '*.json'))):
         with open(j, encoding='utf8') as f:
             q = json.load(f)
         h = os.path.join(tmp, os.path.basename(j)[:-5] + '.html')

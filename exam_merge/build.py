@@ -635,8 +635,19 @@ def main():
                              page=it['page'], sid=s))
             report.append((s, f'FAIL 발문 [{qa}~{qb}] 또는 지문 상자를 못 찾음'))
             continue
-        passage = cut_passage(ex, boxes, work, s, marks.get(s))
+        has_custom = bool(glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'custom_questions', s, 'q*.png')))
+        passage = cut_passage(ex, boxes, work, s, None if has_custom else marks.get(s))   # 새 문항 묶음은 표시어 (a)(b)를 쓰지 않음
         qs = question_blocks(it, var, work)
+        cdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'custom_questions', s)
+        if os.path.isdir(cdir) and glob.glob(os.path.join(cdir, 'q*.png')):   # 새로 만든 문항 묶음으로 전부 교체
+            qs, cans = [], {}
+            for p in sorted(glob.glob(os.path.join(cdir, 'q*.png')), key=lambda p: int(re.sub(r'\D', '', os.path.basename(p)))):
+                n = int(re.sub(r'\D', '', os.path.basename(p)))
+                cw, ch = gray_of(p)[:2]
+                qs.append((n, p, 263.0, ch * 263.0 / cw))
+                with open(p[:-4] + '.json', encoding='utf8') as f:
+                    cans[str(n)] = json.load(f).get('answer', '')
+            answers[s] = cans
         if not qs:
             report.append((s, 'FAIL 문제를 못 찾음'))
             continue
