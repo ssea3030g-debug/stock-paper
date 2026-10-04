@@ -300,7 +300,7 @@ def cut_passage(exam, boxes, work, tag, marks=None):
                 continue
             ws = [w for w in words_of_page(exam.path, pg)
                   if x0 <= (w['x0'] + w['x1']) / 2 <= x1 and y0 <= (w['y0'] + w['y1']) / 2 <= y1]
-            hit = find_phrase(ws, phrase)
+            hit = find_phrase(ws, phrase) or find_phrase(sorted(ws, key=lambda w: (round(w['y0'] / 4), w['x0'])), phrase)
             if hit:
                 lines = {}
                 for w in hit:
@@ -387,6 +387,11 @@ def question_blocks(item, var, work):
         num = int(q['first'][:-1])
         f = os.path.join(work, f'q_{item["page"]}_{num}.png')
         wq, hq = crop_png(png, 300, xa, ya, xb, yb, f)
+        sid = re.sub(r'\s+', '', ' '.join(item['title'].split()[:2]))
+        custom = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'custom_questions', f'{sid}_{num}.png')
+        if os.path.exists(custom):   # 새로 만든 문항으로 바꿔 넣기(render_custom.py로 생성)
+            cw, ch = gray_of(custom)[:2]
+            f, wq, hq = custom, 263.0, ch * 263.0 / cw
         out.append((num, f, wq, hq))
     out.sort()
     return out
