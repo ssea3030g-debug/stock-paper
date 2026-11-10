@@ -14,11 +14,12 @@
     61: ['약한 비', '🌧️'], 63: ['비', '🌧️'], 65: ['강한 비', '🌧️'], 66: ['어는 비', '🌧️'], 67: ['어는 비', '🌧️'],
     71: ['약한 눈', '🌨️'], 73: ['눈', '🌨️'], 75: ['많은 눈', '❄️'], 77: ['싸락눈', '🌨️'],
     80: ['소나기', '🌦️'], 81: ['소나기', '🌧️'], 82: ['강한 소나기', '⛈️'], 85: ['눈 소나기', '🌨️'], 86: ['눈 소나기', '❄️'],
-    95: ['천둥번개', '⛈️'], 96: ['천둥번개·우박', '⛈️'], 99: ['천둥번개·우박', '⛈️']
+    95: ['천둥번개', '⛈️'], 96: ['천둥번개·우박', '⛈️'], 99: ['천둥번개·우박', '⛈️'],
+    68: ['비 또는 눈', '🌨️'], 102: ['구름 많음', '⛅'] // 기상청 전용 (WMO 에 없음)
   };
   const wxName = c => (WMO[c] || ['-', '🌡️'])[0];
   const wxIcon = c => (WMO[c] || ['-', '🌡️'])[1];
-  const isRainCode = c => (c >= 51 && c <= 67) || (c >= 80 && c <= 82);
+  const isRainCode = c => (c >= 51 && c <= 68) || (c >= 80 && c <= 82);
   const isSnowCode = c => (c >= 71 && c <= 77) || c === 85 || c === 86;
   const isStormCode = c => c >= 95;
 
@@ -185,7 +186,46 @@
     return 2 * R * Math.asin(Math.sqrt(h));
   }
 
-  const api = { WMO, wxName, wxIcon, isRainCode, dayWeather, nowWeather, airQuality, pmGrade, assessStatus, bestHours, searchCourses, nearbyCourses, distKm, ymd };
+  /* 기상청 자료(서버)를 Open-Meteo 자료 위에 덮어쓰기. 해 뜨는 시간·자외선·지난 비는 Open-Meteo 것을 그대로 둠 */
+  function mergeKma(om, k, now) {
+    if (!k) return om;
+    const today = ymd(now || new Date());
+    if (!om) {
+      return {
+        source: 'kma',
+        current: Object.assign({ apparent_temperature: k.current.temperature_2m, wind_gusts_10m: null }, k.current),
+        hourly: Object.assign({ uv_index: [] }, k.hourly),
+        daily: { time: k.daily.time, weather_code: k.daily.weather_code, temperature_2m_max: k.daily.temperature_2m_max, temperature_2m_min: k.daily.temperature_2m_min, precipitation_probability_max: k.daily.precipitation_probability_max, wind_speed_10m_max: k.daily.wind_speed_10m_max }
+      };
+    }
+    const w = JSON.parse(JSON.stringify(om));
+    w.source = 'kma';
+    const c = k.current || {};
+    if (c.temperature_2m != null) {
+      const gap = w.current.apparent_temperature != null && w.current.temperature_2m != null ? w.current.apparent_temperature - w.current.temperature_2m : 0;
+      w.current.temperature_2m = c.temperature_2m;
+      w.current.apparent_temperature = c.temperature_2m + gap; // 체감 차이는 Open-Meteo 기준 유지
+    }
+    ['precipitation', 'relative_humidity_2m', 'wind_speed_10m', 'weather_code'].forEach(f => { if (c[f] != null) w.current[f] = c[f]; });
+    const hi = new Map(w.hourly.time.map((t, i) => [t, i]));
+    k.hourly.time.forEach((t, j) => {
+      const i = hi.get(t); if (i == null) return;
+      ['temperature_2m', 'precipitation_probability', 'precipitation', 'weather_code', 'wind_speed_10m'].forEach(f => { if (k.hourly[f] && k.hourly[f][j] != null && w.hourly[f]) w.hourly[f][i] = k.hourly[f][j]; });
+    });
+    const di = new Map(w.daily.time.map((t, i) => [t, i]));
+    k.daily.time.forEach((d, j) => {
+      const i = di.get(d); if (i == null || d < today) return;
+      w.daily.precipitation_probability_max[i] = k.daily.precipitation_probability_max[j];
+      w.daily.weather_code[i] = k.daily.weather_code[j];
+      if (d > today) { // 오늘은 지난 시간 예보가 빠져 있어 최고·최저가 부정확할 수 있음
+        w.daily.temperature_2m_max[i] = k.daily.temperature_2m_max[j];
+        w.daily.temperature_2m_min[i] = k.daily.temperature_2m_min[j];
+      }
+    });
+    return w;
+  }
+
+  const api = { mergeKma, WMO, wxName, wxIcon, isRainCode, dayWeather, nowWeather, airQuality, pmGrade, assessStatus, bestHours, searchCourses, nearbyCourses, distKm, ymd };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.WX = api;
 })(this);

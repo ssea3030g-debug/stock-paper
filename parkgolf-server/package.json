@@ -1,0 +1,17 @@
+{
+  "name": "parkgolf-server",
+  "private": true,
+  "type": "module",
+  "description": "파크골프 수첩용 작은 서버 (Cloudflare Workers): 기상청 날씨 중계 + AI 코치 분석",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node --test test/server.test.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.7.0"
+  },
+  "devDependencies": {
+    "wrangler": "4.159.0"
+  }
+}

@@ -6,7 +6,7 @@
 
   /* ── 저장소 ─────────────────────────────────────── */
   const KEY = 'parkgolf.v1';
-  const blank = () => ({ courses: [], rounds: [], bets: [], events: [], players: [], settings: { name: '', size: 'big', theme: 'auto', alarms: ['1d', '2h'] }, checklist: { date: '', checked: {} } });
+  const blank = () => ({ courses: [], rounds: [], bets: [], events: [], players: [], settings: { name: '', size: 'big', theme: 'auto', alarms: ['1d', '2h'], server: { url: '', pass: '' } }, checklist: { date: '', checked: {} }, aiOverall: null });
   let db = load();
   function load() {
     try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) return Object.assign(blank(), s, { settings: Object.assign(blank().settings, s.settings || {}) }); } catch (e) { /* 처음 */ }
@@ -80,6 +80,26 @@
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
   }
 
+  /* ── 연결 서버 (기상청 날씨·AI 코치) ─────────────── */
+  const srvOn = () => !!(db.settings.server && db.settings.server.url);
+  async function srv(path, opts = {}) {
+    const s = db.settings.server || {};
+    const ctrl = new AbortController();
+    const tm = setTimeout(() => ctrl.abort(), opts.timeout || 20000);
+    try {
+      const headers = { 'X-App-Pass': encodeURIComponent(s.pass || '') };
+      if (opts.body) headers['Content-Type'] = 'application/json';
+      const r = await fetch(s.url.replace(/\/+$/, '') + path, { method: opts.body ? 'POST' : 'GET', headers, body: opts.body ? JSON.stringify(opts.body) : undefined, signal: ctrl.signal });
+      let j = null; try { j = await r.json(); } catch (e) { /* 빈 응답 */ }
+      if (!r.ok) throw new Error((j && j.error) || `서버 오류 (${r.status})`);
+      return j;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('서버가 너무 오래 대답하지 않아요. 잠시 뒤 다시 해 주세요.');
+      if (e instanceof TypeError) throw new Error('서버에 연결하지 못했어요. 인터넷과 서버 주소를 확인해 주세요.');
+      throw e;
+    } finally { clearTimeout(tm); }
+  }
+
   /* ── 화면 설정 ──────────────────────────────────── */
   function applySettings() {
     const r = document.documentElement;
@@ -133,7 +153,13 @@
     const k = c.lat.toFixed(3) + ',' + c.lon.toFixed(3);
     const hit = wxCache[k];
     if (hit && Date.now() - hit.at < 10 * 60000) return hit.data;
-    const [w, aq] = await Promise.all([WX.nowWeather(c.lat, c.lon), WX.airQuality(c.lat, c.lon).catch(() => null)]);
+    const [om, aq, kma] = await Promise.all([
+      WX.nowWeather(c.lat, c.lon).catch(() => null),
+      WX.airQuality(c.lat, c.lon).catch(() => null),
+      srvOn() ? srv(`/weather?lat=${c.lat}&lon=${c.lon}`).catch(() => null) : null
+    ]);
+    const w = WX.mergeKma(om, kma);
+    if (!w) throw new Error('날씨 없음');
     const data = { w, aq, status: WX.assessStatus(c, w, aq) };
     wxCache[k] = { at: Date.now(), data };
     return data;
@@ -404,12 +430,71 @@
     }
     html += `</section>`;
     if (r.weather && (r.weather.tMax != null || (r.weather.tags || []).length)) html += `<section class="card"><h2>그날 날씨</h2>${wxSummary(r.weather)}${(r.weather.tags || []).length ? `<div class="chips">${r.weather.tags.map(x => `<span class="tag plain">${esc(x)}</span>`).join('')}</div>` : ''}</section>`;
+    if (srvOn()) html += `<section class="card" id="aiBox">${aiRoundBox(r)}</section>`;
+    if (srvOn()) html += `<h2 class="section-title">기본 분석</h2>`;
     html += analysisCards(a.good, a.improve, a.practice, a.factors);
     if (r.memo) html += `<section class="card"><h2>메모</h2><p style="white-space:pre-wrap">${esc(r.memo)}</p></section>`;
     html += `<div class="btn-row"><button class="btn" data-act="speak-round" data-id="${r.id}">🔊 소리로 듣기</button><button class="btn" data-act="share-round" data-id="${r.id}">📤 보내기</button></div><div style="height:10px"></div>
       <div class="btn-row"><a class="btn ghost" href="#round-edit-${r.id}">✏️ 고치기</a><button class="btn danger" data-act="del-round" data-id="${r.id}">🗑️ 지우기</button></div>`;
     return { title: '성적 분석', html, back: 'rounds' };
   };
+  /* ── AI 코치 ── */
+  const aiNoteRound = '경기 기록·날씨·골프장 특징·지난 기록을 함께 보고 AI가 자세히 알려 드려요. 20~40초 걸려요.';
+  function aiRoundBox(r) {
+    if (r.ai && r.ai.result) return aiCards(r.ai.result, r.ai.at) + `<div class="btn-row"><button class="btn" data-act="ai-speak" data-kind="round" data-id="${r.id}">🔊 듣기</button><button class="btn ghost" data-act="ai-round" data-id="${r.id}">🔄 다시 받기</button></div>`;
+    return `<h2>🤖 AI 코치</h2><p>${aiNoteRound}</p><button class="btn primary block xl" data-act="ai-round" data-id="${r.id}">🤖 AI 코치에게 분석받기</button>`;
+  }
+  function aiCards(res, at) {
+    const items = (arr, cls) => (arr || []).map(g => `<div class="note ${cls}"><b>${esc(g.title)}</b>${esc(g.detail)}</div>`).join('');
+    return `<h2>🤖 AI 코치 분석</h2><p style="font-size:1.05rem;font-weight:700">${esc(res.summary)}</p>
+      <h3>👍 잘한 점</h3>${items(res.good, 'good')}<h3>💡 보완할 점</h3>${items(res.improve, 'warn')}<h3>🏌️ 연습 과제</h3>${items(res.practice, 'info')}
+      ${res.encouragement ? `<p class="big" style="font-size:1.05rem;color:var(--primary)">💚 ${esc(res.encouragement)}</p>` : ''}
+      <p class="muted small">AI가 쓴 분석이라 틀린 부분이 있을 수 있어요.${at ? ' · ' + fmtDate(WX.ymd(new Date(at))) + ' 받음' : ''}</p>`;
+  }
+  const aiText = res => `${res.summary} 잘한 점. ${(res.good || []).map(g => g.title + '. ' + g.detail).join(' ')} 보완할 점. ${(res.improve || []).map(g => g.title + '. ' + g.detail).join(' ')} 연습 과제. ${(res.practice || []).map(g => g.title + '. ' + g.detail).join(' ')} ${res.encouragement || ''}`;
+  function aiHistory(before) {
+    return [...db.rounds].filter(x => !before || x.date <= before.date && x.id !== before.id).sort((a, b) => a.date.localeCompare(b.date)).slice(-25).map(x => {
+      const t = PG.roundTotals(x), f = PG.weatherFlags(x.weather);
+      return { date: x.date, kind: x.kind, course: x.courseName, holes: t.holes, strokes: t.strokes, par: t.par, weather: Object.keys(f).filter(k => f[k]).join(',') || '모름', condition: x.condition };
+    });
+  }
+  function aiCourse(c) { return c ? { name: c.name, features: c.features || {}, info: c.info || {} } : null; }
+  async function aiRun(el, body, onDone) {
+    const old = el.innerHTML; el.disabled = true;
+    el.innerHTML = '<span class="spinner"></span> AI가 분석하는 중이에요…';
+    try { const res = await srv('/analyze', { body, timeout: 150000 }); onDone(res); }
+    catch (e) { toast(e.message, 4500); el.disabled = false; el.innerHTML = old; }
+  }
+  acts['ai-round'] = el => {
+    const r = byId(db.rounds, el.dataset.id), c = course(r.courseId), a = PG.analyzeRound(r, db.rounds, c);
+    const round = { date: r.date, kind: r.kind, title: r.title, sections: r.sections, ob: r.ob, condition: r.condition, rank: r.rank, memo: r.memo, weather: r.weather };
+    aiRun(el, { mode: 'round', round, course: aiCourse(c), history: aiHistory(r), ruleBased: { good: a.good.map(x => x.t), improve: a.improve.map(x => x.t), factors: a.factors } }, res => {
+      r.ai = { at: Date.now(), result: res }; save();
+      const box = $('#aiBox'); if (box) box.innerHTML = aiRoundBox(r);
+    });
+  };
+  acts['ai-overall'] = el => {
+    const a = PG.analyzeOverall(db.rounds, db.courses);
+    const overall = { style: a.style, count: a.count, avgPer9: a.avgPer9, parTypes: a.parTypes, counts: a.counts, weather: a.wxBuckets, grass: a.grass, trend: a.trend, spread: a.spread };
+    const courses = db.courses.map(aiCourse);
+    aiRun(el, { mode: 'overall', overall, history: aiHistory(null), course: null, courses, ruleBased: { good: a.good.map(x => x.t), improve: a.improve.map(x => x.t) } }, res => {
+      db.aiOverall = { at: Date.now(), count: db.rounds.length, result: res }; save();
+      const box = $('#aiBox'); if (box) box.innerHTML = aiOverallBox();
+    });
+  };
+  acts['ai-speak'] = el => {
+    const res = el.dataset.kind === 'overall' ? db.aiOverall.result : byId(db.rounds, el.dataset.id).ai.result;
+    speak(aiText(res));
+  };
+  function aiOverallBox() {
+    const o = db.aiOverall;
+    if (o && o.result) {
+      const stale = o.count !== db.rounds.length ? `<div class="note info">그 뒤로 기록이 ${Math.abs(db.rounds.length - o.count)}개 바뀌었어요. ‘다시 받기’를 누르면 새로 분석해요.</div>` : '';
+      return aiCards(o.result, o.at) + stale + `<div class="btn-row"><button class="btn" data-act="ai-speak" data-kind="overall">🔊 듣기</button><button class="btn ghost" data-act="ai-overall">🔄 다시 받기</button></div>`;
+    }
+    return `<h2>🤖 AI 코치 종합 분석</h2><p>지금까지 기록 전체를 보고 플레이 스타일과 앞으로 집중할 점을 알려 드려요. 20~40초 걸려요.</p><button class="btn primary block xl" data-act="ai-overall">🤖 AI 코치에게 종합 분석받기</button>`;
+  }
+
   function analysisCards(good, improve, practice, factors) {
     let h = '';
     if (factors && factors.length) h += `<section class="card"><h2>🔎 그날의 상황</h2>${factors.map(f => `<p>• ${esc(f)}</p>`).join('')}</section>`;
@@ -439,6 +524,7 @@
     if (a.holesCount) html += `<section class="card"><h2>홀 종류별 평균</h2><p class="muted small" style="margin-top:0">기준 타수보다 평균 몇 타 더 쳤는지</p><div class="wx" style="grid-template-columns:repeat(3,1fr)">${[3, 4, 5].map(k => `<div><span class="k">파${k} 홀</span><span class="v">${pt[k] ? PG.signF(pt[k].avg) : '-'}</span><span class="k">${pt[k] ? pt[k].n + '홀' : ''}</span></div>`).join('')}</div></section>`;
     const wx = a.wxBuckets.filter(b => b.n);
     if (wx.length) html += `<section class="card"><h2>날씨별 성적</h2>${wx.map(b => `<div class="row" style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="grow"><b>${b.label}</b> <span class="muted small">${b.n}번</span></span><span class="big">${PG.signF(b.avg)}</span>${b.others != null ? `<span class="muted small">다른 날 ${PG.signF(b.others)}</span>` : ''}</div>`).join('')}<p class="muted small">숫자는 9홀당 기준보다 더 친 타수예요.</p></section>`;
+    if (srvOn()) html += `<section class="card" id="aiBox">${aiOverallBox()}</section><h2 class="section-title">기본 분석</h2>`;
     html += analysisCards(a.good, a.improve, a.practice);
     html += `<button class="btn block" data-act="speak-overall">🔊 소리로 듣기</button>`;
     return { title: '나의 플레이 분석', html, after: () => drawChart($('#chart'), a.series) };
@@ -725,10 +811,11 @@
         <div class="wx" style="margin-top:12px"><div><span class="k">지금 날씨</span><span class="v">${WX.wxIcon(cur.weather_code)} ${WX.wxName(cur.weather_code)}</span></div><div><span class="k">기온 (체감)</span><span class="v">${Math.round(cur.temperature_2m)}℃ <span class="small">(${Math.round(cur.apparent_temperature)}℃)</span></span></div>
         <div><span class="k">바람</span><span class="v">초속 ${Math.round(cur.wind_speed_10m)}m</span></div><div><span class="k">미세먼지</span><span class="v">${pm ? pm.icon + ' ' + pm.name : '-'}</span></div>
         ${todayIdx >= 0 ? `<div><span class="k">오늘 최고/최저</span><span class="v">${Math.round(D.temperature_2m_max[todayIdx])}° / ${Math.round(D.temperature_2m_min[todayIdx])}°</span></div><div><span class="k">비 올 확률</span><span class="v">${D.precipitation_probability_max[todayIdx] != null ? D.precipitation_probability_max[todayIdx] + '%' : '-'}</span></div>
-        <div><span class="k">해 뜨는 시간</span><span class="v">${D.sunrise[todayIdx].slice(11)}</span></div><div><span class="k">해 지는 시간</span><span class="v">${D.sunset[todayIdx].slice(11)}</span></div>` : ''}</div>`;
+        ${D.sunrise ? `<div><span class="k">해 뜨는 시간</span><span class="v">${D.sunrise[todayIdx].slice(11)}</span></div><div><span class="k">해 지는 시간</span><span class="v">${D.sunset[todayIdx].slice(11)}</span></div>` : ''}` : ''}</div>`;
       if (hours.length) { const best = hours.find(x => x.best); h += `<h3>오늘 시간별 날씨 ${best ? `<span class="tag good">${best.hour}시가 가장 좋아요</span>` : ''}</h3><div class="hours">${hours.map(x => `<div class="${x.best ? 'best' : ''}"><b>${x.hour}시</b><br>${WX.wxIcon(x.code)}<br>${Math.round(x.temp)}℃<br><span class="muted">비 ${x.pop}%</span></div>`).join('')}</div>`; }
       const fut = D.time.map((t, i) => ({ t, i })).filter(x => x.t > today()).slice(0, 3);
       if (fut.length) h += `<h3>앞으로 3일</h3><div class="hours">${fut.map(({ t, i }) => `<div style="min-width:96px"><b>${fmtDate(t).replace(/^\d+월 /, '')}</b><br>${WX.wxIcon(D.weather_code[i])} ${WX.wxName(D.weather_code[i])}<br>${Math.round(D.temperature_2m_min[i])}°/${Math.round(D.temperature_2m_max[i])}°<br><span class="muted">비 ${D.precipitation_probability_max[i] != null ? D.precipitation_probability_max[i] : '-'}%</span></div>`).join('')}</div>`;
+      h += `<p class="muted small">날씨 자료: ${d.w.source === 'kma' ? '기상청 단기예보' : 'Open-Meteo (세계 기상 예보)'} · 미세먼지: Open-Meteo</p>`;
       box.innerHTML = h;
     } catch (e) { box.innerHTML = `<div class="note bad"><b>날씨를 불러오지 못했어요</b>인터넷 연결을 확인하고 다시 열어 주세요.</div>`; }
   }
@@ -1011,6 +1098,12 @@
     <section class="card"><h2>글자 크기</h2><div class="seg">${[['normal', '보통'], ['big', '크게'], ['huge', '아주 크게']].map(([v, l]) => `<button class="chip" data-act="st-size" data-v="${v}" aria-pressed="${s.size === v}">${l}</button>`).join('')}</div>
       <h3>화면 밝기</h3><div class="seg">${[['light', '밝게'], ['dark', '어둡게'], ['auto', '휴대폰 따라']].map(([v, l]) => `<button class="chip" data-act="st-theme" data-v="${v}" aria-pressed="${s.theme === v}">${l}</button>`).join('')}</div></section>
     <section class="card"><h2>캘린더 알림</h2><p class="muted small" style="margin-top:0">삼성 캘린더에 넣을 때 같이 넣을 알림</p><div class="chips">${[['1d', '하루 전'], ['2h', '2시간 전']].map(([v, l]) => `<button class="chip" data-act="st-alarm" data-v="${v}" aria-pressed="${(s.alarms || []).includes(v)}">${l}</button>`).join('')}</div></section>
+    <section class="card"><h2>🔗 서버 연결 (기상청 날씨·AI 코치)</h2>
+      <p class="muted small" style="margin-top:0">가족이 만들어 둔 서버 주소와 비밀번호를 한 번만 넣으면 돼요. 비워 두면 기본 날씨(Open-Meteo)와 기본 분석만 써요.</p>
+      <label class="field"><span>서버 주소</span><input type="text" id="srv-url" inputmode="url" autocapitalize="off" spellcheck="false" value="${esc((s.server || {}).url || '')}" placeholder="https://parkgolf-server.아이디.workers.dev"></label>
+      <label class="field"><span>앱 비밀번호</span><input type="text" id="srv-pass" autocapitalize="off" spellcheck="false" value="${esc((s.server || {}).pass || '')}"></label>
+      <div class="btn-row"><button class="btn primary" data-act="srv-save">저장하고 확인</button><button class="btn ghost" data-act="srv-clear">연결 끊기</button></div>
+      <div id="srv-status"></div></section>
     <section class="card"><h2>📱 휴대폰 화면에 앱 아이콘 만들기</h2>
       ${installEvt ? '<button class="btn primary block" data-act="st-install">홈 화면에 추가</button>' : ''}
       <p><b>삼성 인터넷:</b> 아래쪽 ☰ 메뉴 → <b>‘현재 페이지 추가’</b> → <b>‘홈 화면’</b></p><p><b>크롬:</b> 오른쪽 위 ⋮ → <b>‘홈 화면에 추가’</b></p></section>
@@ -1018,24 +1111,44 @@
       <div class="btn-row"><button class="btn" data-act="bk-save">파일로 저장</button><button class="btn" data-act="bk-copy">글로 복사</button></div>
       <h3>되살리기</h3><div class="btn-row"><label class="btn ghost" for="bk-file" style="cursor:pointer">파일 고르기</label><button class="btn ghost" data-act="bk-paste">글 붙여넣기</button></div><input type="file" id="bk-file" accept=".json,application/json" hidden>
       <p class="muted small">성적 ${db.rounds.length}개 · 내기 ${db.bets.length}개 · 골프장 ${db.courses.length}곳 · 일정 ${db.events.length}개</p></section>
-    <section class="card"><h2>도움말</h2><p class="small">날씨: Open-Meteo(기상 예보·과거 기록) · 미세먼지: Open-Meteo 대기질 · 골프장 찾기: 오픈스트리트맵</p><p class="small muted">운영 상황은 날씨와 휴장일로 짐작한 것이에요. 대회·공사·잔디 보수로 쉴 수 있으니 전화로 확인하세요.</p></section>
+    <section class="card"><h2>도움말</h2><p class="small">날씨: 서버 연결 시 기상청 단기예보, 아니면 Open-Meteo · 지난 경기 날씨·미세먼지: Open-Meteo · 골프장 찾기: 오픈스트리트맵 · AI 코치: Anthropic Claude (서버 연결 시)</p><p class="small muted">운영 상황은 날씨와 휴장일로 짐작한 것이에요. 대회·공사·잔디 보수로 쉴 수 있으니 전화로 확인하세요.</p></section>
     <button class="btn danger block" data-act="st-wipe">모든 기록 지우기</button>`;
     return { title: '설정·백업', html, after: () => { $('#bk-file').addEventListener('change', async ev => { const f = ev.target.files[0]; if (f) restore(await f.text()); }); } };
   };
+  acts['srv-save'] = async el => {
+    const url = $('#srv-url').value.trim(), pass = $('#srv-pass').value.trim();
+    if (url && !/^https:\/\//.test(url)) return toast('주소는 https:// 로 시작해야 해요');
+    db.settings.server = { url, pass }; save();
+    const box = $('#srv-status');
+    if (!url) { box.innerHTML = ''; return toast('저장했어요'); }
+    box.innerHTML = '<p class="muted"><span class="spinner"></span> 서버를 확인하는 중…</p>';
+    try {
+      const h = await srv('/health');
+      let wxOk = false, wxMsg = '';
+      if (h.weather) { try { await srv('/weather?lat=37.57&lon=126.98'); wxOk = true; } catch (e) { wxMsg = e.message; } }
+      box.innerHTML = `<div class="note ${wxOk && h.ai ? 'good' : 'warn'}"><b>서버에 연결됐어요</b>기상청 날씨: ${wxOk ? '✅ 사용 중' : '❌ ' + esc(wxMsg || '서버에 기상청 키 없음')}<br>AI 코치: ${h.ai ? '✅ 사용 가능' : '❌ 서버에 AI 키 없음'}</div>`;
+      Object.keys(wxCache).forEach(k => delete wxCache[k]);
+    } catch (e) { box.innerHTML = `<div class="note bad"><b>연결하지 못했어요</b>${esc(e.message)}</div>`; }
+  };
+  acts['srv-clear'] = () => { db.settings.server = { url: '', pass: '' }; save(); Object.keys(wxCache).forEach(k => delete wxCache[k]); rerenderKeep(); toast('서버 연결을 끊었어요'); };
   acts['st-name'] = () => { db.settings.name = $('#st-name').value.trim(); save(); toast('저장했어요'); };
   acts['st-size'] = el => { db.settings.size = el.dataset.v; save(); applySettings(); rerenderKeep(); };
   acts['st-theme'] = el => { db.settings.theme = el.dataset.v; save(); applySettings(); rerenderKeep(); };
   acts['st-alarm'] = el => { const a = db.settings.alarms = db.settings.alarms || []; const i = a.indexOf(el.dataset.v); if (i >= 0) a.splice(i, 1); else a.push(el.dataset.v); save(); el.setAttribute('aria-pressed', i < 0); };
   acts['st-install'] = async () => { if (installEvt) { installEvt.prompt(); installEvt = null; } };
-  acts['bk-save'] = () => download(`parkgolf-backup-${today()}.json`, JSON.stringify(db), 'application/json');
-  acts['bk-copy'] = async () => { try { await navigator.clipboard.writeText(JSON.stringify(db)); toast('복사했어요. 카카오톡 ‘나와의 채팅’에 붙여 넣어 두세요.', 4000); } catch (e) { modal(`<h2>아래 글을 길게 눌러 모두 복사하세요</h2><textarea readonly style="min-height:200px">${esc(JSON.stringify(db))}</textarea><button class="btn primary block" data-res="ok">닫기</button>`); } };
+  const backupText = () => { const c = JSON.parse(JSON.stringify(db)); if (c.settings.server) c.settings.server.pass = ''; return JSON.stringify(c); }; // 비밀번호는 백업에 넣지 않음
+  acts['bk-save'] = () => download(`parkgolf-backup-${today()}.json`, backupText(), 'application/json');
+  acts['bk-copy'] = async () => { try { await navigator.clipboard.writeText(backupText()); toast('복사했어요. 카카오톡 ‘나와의 채팅’에 붙여 넣어 두세요.', 4000); } catch (e) { modal(`<h2>아래 글을 길게 눌러 모두 복사하세요</h2><textarea readonly style="min-height:200px">${esc(backupText())}</textarea><button class="btn primary block" data-res="ok">닫기</button>`); } };
   acts['bk-paste'] = () => modal(`<h2>백업한 글을 붙여 넣으세요</h2><textarea id="bk-text" style="min-height:200px"></textarea><div class="btn-row"><button class="btn ghost" data-res="no">취소</button><button class="btn primary" data-act="bk-do">되살리기</button></div>`);
   acts['bk-do'] = () => { const t = $('#bk-text').value; document.querySelector('.modal-back').remove(); restore(t); };
   async function restore(text) {
     let data; try { data = JSON.parse(text); } catch (e) { return toast('백업 내용이 올바르지 않아요'); }
     if (!data || !Array.isArray(data.rounds)) return toast('백업 내용이 올바르지 않아요');
     if (!(await ask('되살릴까요?', `지금 기록이 백업 내용(성적 ${data.rounds.length}개)으로 바뀌어요.`, '되살리기'))) return;
-    db = Object.assign(blank(), data, { settings: Object.assign(blank().settings, data.settings || {}) }); save(); applySettings(); toast('되살렸어요'); go('home');
+    const keepServer = db.settings.server;
+    db = Object.assign(blank(), data, { settings: Object.assign(blank().settings, data.settings || {}) });
+    if (!db.settings.server || !db.settings.server.pass) db.settings.server = keepServer; // 백업에는 비밀번호가 없으니 지금 연결 유지
+    save(); applySettings(); toast('되살렸어요'); go('home');
   }
   acts['st-wipe'] = async () => {
     if (!(await ask('정말 모두 지울까요?', '성적·내기·골프장·일정이 모두 지워지고 되돌릴 수 없어요. 먼저 백업하세요.', '모두 지우기', true))) return;

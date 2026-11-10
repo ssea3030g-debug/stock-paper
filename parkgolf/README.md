@@ -33,9 +33,15 @@
 - 넣기: 표준 캘린더 파일(.ics)을 공유/다운로드 → 삼성 캘린더로 열어 저장 (하루 전·2시간 전 알림 포함)
 - 가져오기: 캘린더에서 내보낸 .ics 파일을 고르면 "파크골프·골프·대회" 일정만 골라 가져옴
 
-## 사용하는 무료 서비스 (키 필요 없음)
+## 사용하는 서비스
+키 없이도 모든 기능이 돌아갑니다.
 - 날씨·과거 날씨: Open-Meteo / 미세먼지: Open-Meteo Air Quality
 - 골프장 검색: OpenStreetMap Nominatim, 내 주변: Overpass API
+
+**선택: 서버 연결** ([`parkgolf-server/`](../parkgolf-server/README.md), Cloudflare Workers 무료)
+- 지금 날씨·시간별·3일 예보를 **기상청 단기예보**로 바꿈 (지난 비·해 뜨는 시간·자외선은 Open-Meteo 유지)
+- **🤖 AI 코치**: 경기 화면과 ‘나의 분석’에 버튼이 생기고, Claude 가 기록·날씨·골프장 특징·지난 기록을 함께 보고 쉬운 말로 분석 (유료, 한 번에 대략 100원 안팎 예상)
+- 설정 → 서버 연결에 주소와 비밀번호만 넣으면 됨. 서버가 꺼져 있으면 자동으로 기본 날씨·기본 분석으로 돌아감
 
 ## 올리기 (GitHub Pages)
 1. 저장소 Settings → Pages → Source: **GitHub Actions**
@@ -57,4 +63,5 @@ parkgolf/
   weather.js            날씨·미세먼지·골프장 검색·운영 예상
   sw.js, manifest.webmanifest, icon*  앱 설치·오프라인
   tests/calc.test.js    계산 테스트: node --test parkgolf/tests/calc.test.js
+parkgolf-server/        (선택) 기상청 날씨·AI 코치 중계 서버
 ```

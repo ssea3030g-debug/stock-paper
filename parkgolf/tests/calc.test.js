@@ -91,3 +91,29 @@ test('미세먼지 등급과 운영 판단', () => {
   const rainy = WX.assessStatus({ features: { river: true } }, { current: { weather_code: 3, precipitation: 0, wind_speed_10m: 2, wind_gusts_10m: 4, apparent_temperature: 15, temperature_2m: 15 }, daily: { precipitation_sum: [25, 20] } }, null, monday);
   assert.strictEqual(rainy.level, 2);
 });
+
+test('기상청 자료 합치기: 지금·시간별은 덮고, 해 뜨는 시간·지난 비는 유지', () => {
+  const om = {
+    current: { temperature_2m: 10, apparent_temperature: 8, precipitation: 0, weather_code: 0, wind_speed_10m: 2, wind_gusts_10m: 5 },
+    hourly: { time: ['2026-11-10T09:00', '2026-11-10T10:00'], temperature_2m: [9, 10], precipitation_probability: [0, 0], precipitation: [0, 0], weather_code: [0, 0], wind_speed_10m: [2, 2], uv_index: [1, 2] },
+    daily: { time: ['2026-11-08', '2026-11-10', '2026-11-11'], precipitation_sum: [30, 0, 0], sunrise: ['a', 'b', 'c'], weather_code: [0, 0, 0], temperature_2m_max: [1, 2, 3], temperature_2m_min: [0, 0, 0], precipitation_probability_max: [0, 0, 0] }
+  };
+  const k = {
+    current: { temperature_2m: 12, precipitation: 0, weather_code: 102, wind_speed_10m: 3, relative_humidity_2m: 40 },
+    hourly: { time: ['2026-11-10T10:00'], temperature_2m: [13], precipitation_probability: [20], precipitation: [0], weather_code: [102], wind_speed_10m: [3] },
+    daily: { time: ['2026-11-10', '2026-11-11'], weather_code: [102, 63], temperature_2m_max: [99, 15], temperature_2m_min: [99, 5], precipitation_probability_max: [20, 70] }
+  };
+  const w = WX.mergeKma(om, k, new Date('2026-11-10T10:30:00'));
+  assert.strictEqual(w.source, 'kma');
+  assert.strictEqual(w.current.temperature_2m, 12);
+  assert.strictEqual(w.current.apparent_temperature, 10);
+  assert.deepStrictEqual(w.hourly.temperature_2m, [9, 13]);
+  assert.strictEqual(w.daily.precipitation_sum[0], 30);
+  assert.strictEqual(w.daily.temperature_2m_max[1], 2, '오늘 최고기온은 Open-Meteo 유지');
+  assert.strictEqual(w.daily.temperature_2m_max[2], 15);
+  assert.strictEqual(w.daily.weather_code[2], 63);
+  assert.strictEqual(WX.wxName(102), '구름 많음');
+  const only = WX.mergeKma(null, k);
+  assert.strictEqual(only.current.apparent_temperature, 12);
+  assert.strictEqual(WX.mergeKma(om, null), om);
+});

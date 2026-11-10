@@ -6,7 +6,7 @@ name: 파크골프 수첩 배포
 on:
   push:
     branches: [main]
-    paths: ["parkgolf/**"]
+    paths: ["parkgolf/**", "parkgolf-server/**"]
   workflow_dispatch:
 
 permissions:
@@ -31,6 +31,8 @@ jobs:
           node-version: "22"
       - name: 계산 테스트
         run: node --test parkgolf/tests/calc.test.js
+      - name: 서버 테스트
+        run: cd parkgolf-server && npm ci && npm test
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
