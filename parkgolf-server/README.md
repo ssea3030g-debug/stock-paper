@@ -31,7 +31,27 @@
 1. https://console.anthropic.com 가입 → 결제 수단 등록 → **API Keys** 에서 새 키 만들기
 2. **콘솔의 지출 한도(Limits)를 꼭 정해 두세요.** (예: 한 달 5달러) — 이 서버에도 하루 횟수 제한이 있지만 대략적인 값이라, 확실한 상한은 콘솔 한도입니다.
 
-### 3. 서버 올리기
+### 3-가. 서버 올리기 — 컴퓨터 없이 휴대폰으로 (추천)
+GitHub 가 대신 올려 줍니다(`.github/workflows/parkgolf-server.yml`).
+1. **Cloudflare** (휴대폰 브라우저) https://dash.cloudflare.com 가입 → 왼쪽 메뉴 **Workers & Pages** 를 한 번 열어 두기 (무료 주소 `○○.workers.dev` 가 이때 만들어짐)
+2. 같은 화면의 **계정 ID**(Account ID) 복사
+3. 오른쪽 위 사람 아이콘 → **내 프로필 → API 토큰 → 토큰 생성 → "Cloudflare Workers 편집"(Edit Cloudflare Workers) 템플릿 → 사용** → 계정 리소스에 내 계정 선택 → 요약 계속 → 토큰 생성 → 복사 (한 번만 보여요)
+4. **GitHub** 저장소 → Settings → Secrets and variables → Actions → **New repository secret** 으로 아래 넣기
+   (휴대폰에서는 브라우저 메뉴의 "데스크톱 사이트"를 켜면 Settings 탭이 보여요)
+
+   | 이름 | 값 |
+   |---|---|
+   | `CLOUDFLARE_API_TOKEN` | 3번 토큰 |
+   | `CLOUDFLARE_ACCOUNT_ID` | 2번 계정 ID |
+   | `KMA_KEY` | 기상청 **일반 인증키 (Decoding)** |
+   | `APP_PASSCODE` | 할머니 폰에 넣을 비밀번호 |
+   | `ANTHROPIC_API_KEY` | (나중에) Claude 키 |
+5. 저장소 **Actions** 탭 → **파크골프 서버 배포** → 가장 위 실행 → **Re-run all jobs**
+6. 끝나면 실행 화면 아래 요약에 **서버 주소**와 "기상청 날씨: ✅ 작동"이 나와요. 그 주소를 앱에 넣으면 끝.
+
+키를 바꾸거나 Claude 키를 추가할 때도 4번에 넣고 5번만 다시 하면 됩니다.
+
+### 3-나. 서버 올리기 — 컴퓨터로
 Node.js 20 이상이 깔린 컴퓨터에서:
 ```bash
 cd parkgolf-server

@@ -1,0 +1,126 @@
+# 파크골프 수첩 서버를 Cloudflare Workers 에 올림 — 컴퓨터 없이 휴대폰으로 가능
+# 준비 (저장소 Settings → Secrets and variables → Actions → Secrets):
+#   CLOUDFLARE_API_TOKEN   Cloudflare "Workers 편집" API 토큰
+#   CLOUDFLARE_ACCOUNT_ID  Cloudflare 계정 ID
+#   KMA_KEY                기상청 일반 인증키 (Decoding)
+#   APP_PASSCODE           할머니 폰에 넣을 비밀번호
+#   ANTHROPIC_API_KEY      (나중에) Claude API 키 — 없으면 AI 코치만 꺼짐
+# 선택 (같은 화면 → Variables): ALLOWED_ORIGINS = 앱 주소 (예: https://아이디.github.io)
+# 비밀값을 넣은 뒤에는 Actions 탭에서 이 작업을 "Re-run all jobs" 하면 됩니다.
+name: 파크골프 서버 배포
+
+on:
+  push:
+    branches: [main, claude/keen-newton-h8dsab]
+    paths: ["parkgolf-server/**", ".github/workflows/parkgolf-server.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: parkgolf-server
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: parkgolf-server
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - name: 시험
+        run: npm test
+
+      - name: 준비 확인
+        id: ready
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            {
+              echo "## ⏸️ 아직 올리지 않았어요"
+              echo "저장소 **Settings → Secrets and variables → Actions** 에 \`CLOUDFLARE_API_TOKEN\`, \`CLOUDFLARE_ACCOUNT_ID\` 를 넣은 뒤"
+              echo "이 화면 오른쪽 위 **Re-run all jobs** 를 눌러 주세요."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "go=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cloudflare 에 올리기
+        id: deploy
+        if: steps.ready.outputs.go == 'yes'
+        env:
+          ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
+        run: |
+          set -o pipefail
+          args=()
+          if [ -n "$ALLOWED_ORIGINS" ]; then args+=(--var "ALLOWED_ORIGINS:$ALLOWED_ORIGINS"); fi
+          npx wrangler deploy "${args[@]}" 2>&1 | tee deploy.log
+          url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: 비밀값 넣기
+        if: steps.ready.outputs.go == 'yes'
+        env:
+          KMA_KEY: ${{ secrets.KMA_KEY }}
+          APP_PASSCODE: ${{ secrets.APP_PASSCODE }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          for name in KMA_KEY APP_PASSCODE ANTHROPIC_API_KEY; do
+            value="${!name}"
+            if [ -n "$value" ]; then
+              printf '%s' "$value" | npx wrangler secret put "$name" > /dev/null
+              echo "$name: 넣음"
+            else
+              echo "$name: 없음 (건너뜀)"
+            fi
+          done
+
+      - name: 연결 확인
+        if: steps.ready.outputs.go == 'yes'
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+          APP_PASSCODE: ${{ secrets.APP_PASSCODE }}
+          ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
+        run: |
+          sleep 10
+          origin="${ALLOWED_ORIGINS%%,*}"
+          pass=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ.get("APP_PASSCODE", ""), safe=""))')
+          health=$(curl -s -H "Origin: ${origin}" "$URL/health" || true)
+          wx=$(curl -s -H "Origin: ${origin}" -H "X-App-Pass: ${pass}" "$URL/weather?lat=37.57&lon=126.98" || true)
+          summary=$(python3 - "$health" "$wx" <<'PY'
+          import json, sys
+          h, w = sys.argv[1], sys.argv[2]
+          try: h = json.loads(h)
+          except Exception: h = {}
+          try: w = json.loads(w)
+          except Exception: w = {"error": "응답 없음"}
+          lines = []
+          if "current" in w:
+              c = w["current"]
+              lines.append(f"- 기상청 날씨: ✅ 작동 (서울 지금 {c.get('temperature_2m')}℃, 예보 {len(w.get('hourly', {}).get('time', []))}시간)")
+          else:
+              lines.append(f"- 기상청 날씨: ❌ {w.get('error', '알 수 없음')}")
+          lines.append("- AI 코치: " + ("✅ 켜짐" if h.get("ai") else "꺼짐 (ANTHROPIC_API_KEY 를 넣으면 켜져요)"))
+          lines.append("- 앱 비밀번호: " + ("설정됨" if h.get("passcode") else "⚠️ 없음 — APP_PASSCODE 를 꼭 넣으세요"))
+          print("\n".join(lines))
+          PY
+          )
+          {
+            echo "## ✅ 서버를 올렸어요"
+            echo ""
+            echo "**서버 주소** (할머니 앱 → 설정 → 서버 연결에 넣으세요):"
+            echo ""
+            echo "\`$URL\`"
+            echo ""
+            echo "$summary"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "$summary"
