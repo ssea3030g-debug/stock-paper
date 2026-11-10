@@ -1,0 +1,39 @@
+# 파크골프 수첩(parkgolf/)을 GitHub Pages 에 올림
+# 준비: 저장소 Settings → Pages → Source: "GitHub Actions"
+# 주의: 한 저장소에는 Pages 사이트가 하나라서, daily.yml(신문)로 Pages 를 배포하면 이 앱 주소가 덮어써집니다.
+name: 파크골프 수첩 배포
+
+on:
+  push:
+    branches: [main]
+    paths: ["parkgolf/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: parkgolf-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: 계산 테스트
+        run: node --test parkgolf/tests/calc.test.js
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: parkgolf
+      - id: deploy
+        uses: actions/deploy-pages@v4

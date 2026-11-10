@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d6b3a">
+<meta name="description" content="파크골프 성적 기록, 플레이 분석, 내기 정산, 골프장 날씨, 일정 관리">
+<title>파크골프 수첩</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <button class="back" id="backBtn" hidden aria-label="뒤로 가기">◀ 뒤로</button>
+  <h1 id="title">파크골프 수첩</h1>
+</header>
+<main id="app" aria-live="polite"></main>
+<nav class="tabbar" aria-label="메뉴">
+  <a href="#home" data-tab="home"><span class="ico" aria-hidden="true">🏠</span>처음</a>
+  <a href="#rounds" data-tab="rounds"><span class="ico" aria-hidden="true">📝</span>성적</a>
+  <a href="#bets" data-tab="bets"><span class="ico" aria-hidden="true">💰</span>내기</a>
+  <a href="#courses" data-tab="courses"><span class="ico" aria-hidden="true">⛳</span>골프장</a>
+  <a href="#schedule" data-tab="schedule"><span class="ico" aria-hidden="true">📅</span>일정</a>
+</nav>
+<script src="analysis.js"></script>
+<script src="weather.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
