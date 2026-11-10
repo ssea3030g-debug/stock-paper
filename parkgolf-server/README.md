@@ -42,7 +42,7 @@ npx wrangler login          # 브라우저가 열리면 Cloudflare 가입·로�
 ```bash
 npx wrangler deploy
 npx wrangler secret put KMA_KEY            # 1번의 기상청 키 붙여넣기
-npx wrangler secret put ANTHROPIC_API_KEY  # 2번의 Claude 키 붙여넣기
+npx wrangler secret put ANTHROPIC_API_KEY  # 2번의 Claude 키 (나중에 넣어도 됨 — 없으면 앱에 AI 버튼이 안 보임)
 npx wrangler secret put APP_PASSCODE       # 할머니 폰에 넣을 비밀번호 (아무 말이나, 한글 가능)
 ```
 `deploy` 가 알려 주는 주소(`https://parkgolf-server.<이름>.workers.dev`)를 적어 두세요.

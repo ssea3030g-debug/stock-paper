@@ -82,6 +82,7 @@
 
   /* ── 연결 서버 (기상청 날씨·AI 코치) ─────────────── */
   const srvOn = () => !!(db.settings.server && db.settings.server.url);
+  const aiOn = () => srvOn() && db.settings.server.ai !== false; // 서버에 AI 키가 없으면 AI 버튼 숨김
   async function srv(path, opts = {}) {
     const s = db.settings.server || {};
     const ctrl = new AbortController();
@@ -430,8 +431,8 @@
     }
     html += `</section>`;
     if (r.weather && (r.weather.tMax != null || (r.weather.tags || []).length)) html += `<section class="card"><h2>그날 날씨</h2>${wxSummary(r.weather)}${(r.weather.tags || []).length ? `<div class="chips">${r.weather.tags.map(x => `<span class="tag plain">${esc(x)}</span>`).join('')}</div>` : ''}</section>`;
-    if (srvOn()) html += `<section class="card" id="aiBox">${aiRoundBox(r)}</section>`;
-    if (srvOn()) html += `<h2 class="section-title">기본 분석</h2>`;
+    if (aiOn()) html += `<section class="card" id="aiBox">${aiRoundBox(r)}</section>`;
+    if (aiOn()) html += `<h2 class="section-title">기본 분석</h2>`;
     html += analysisCards(a.good, a.improve, a.practice, a.factors);
     if (r.memo) html += `<section class="card"><h2>메모</h2><p style="white-space:pre-wrap">${esc(r.memo)}</p></section>`;
     html += `<div class="btn-row"><button class="btn" data-act="speak-round" data-id="${r.id}">🔊 소리로 듣기</button><button class="btn" data-act="share-round" data-id="${r.id}">📤 보내기</button></div><div style="height:10px"></div>
@@ -524,7 +525,7 @@
     if (a.holesCount) html += `<section class="card"><h2>홀 종류별 평균</h2><p class="muted small" style="margin-top:0">기준 타수보다 평균 몇 타 더 쳤는지</p><div class="wx" style="grid-template-columns:repeat(3,1fr)">${[3, 4, 5].map(k => `<div><span class="k">파${k} 홀</span><span class="v">${pt[k] ? PG.signF(pt[k].avg) : '-'}</span><span class="k">${pt[k] ? pt[k].n + '홀' : ''}</span></div>`).join('')}</div></section>`;
     const wx = a.wxBuckets.filter(b => b.n);
     if (wx.length) html += `<section class="card"><h2>날씨별 성적</h2>${wx.map(b => `<div class="row" style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="grow"><b>${b.label}</b> <span class="muted small">${b.n}번</span></span><span class="big">${PG.signF(b.avg)}</span>${b.others != null ? `<span class="muted small">다른 날 ${PG.signF(b.others)}</span>` : ''}</div>`).join('')}<p class="muted small">숫자는 9홀당 기준보다 더 친 타수예요.</p></section>`;
-    if (srvOn()) html += `<section class="card" id="aiBox">${aiOverallBox()}</section><h2 class="section-title">기본 분석</h2>`;
+    if (aiOn()) html += `<section class="card" id="aiBox">${aiOverallBox()}</section><h2 class="section-title">기본 분석</h2>`;
     html += analysisCards(a.good, a.improve, a.practice);
     html += `<button class="btn block" data-act="speak-overall">🔊 소리로 듣기</button>`;
     return { title: '나의 플레이 분석', html, after: () => drawChart($('#chart'), a.series) };
@@ -1124,9 +1125,10 @@
     box.innerHTML = '<p class="muted"><span class="spinner"></span> 서버를 확인하는 중…</p>';
     try {
       const h = await srv('/health');
+      db.settings.server.ai = !!h.ai; save();
       let wxOk = false, wxMsg = '';
       if (h.weather) { try { await srv('/weather?lat=37.57&lon=126.98'); wxOk = true; } catch (e) { wxMsg = e.message; } }
-      box.innerHTML = `<div class="note ${wxOk && h.ai ? 'good' : 'warn'}"><b>서버에 연결됐어요</b>기상청 날씨: ${wxOk ? '✅ 사용 중' : '❌ ' + esc(wxMsg || '서버에 기상청 키 없음')}<br>AI 코치: ${h.ai ? '✅ 사용 가능' : '❌ 서버에 AI 키 없음'}</div>`;
+      box.innerHTML = `<div class="note ${wxOk ? 'good' : 'warn'}"><b>서버에 연결됐어요</b>기상청 날씨: ${wxOk ? '✅ 사용 중' : '❌ ' + esc(wxMsg || '서버에 기상청 키 없음')}<br>AI 코치: ${h.ai ? '✅ 사용 가능' : '아직 꺼져 있음 (서버에 AI 키를 넣으면 켜져요)'}</div>`;
       Object.keys(wxCache).forEach(k => delete wxCache[k]);
     } catch (e) { box.innerHTML = `<div class="note bad"><b>연결하지 못했어요</b>${esc(e.message)}</div>`; }
   };
